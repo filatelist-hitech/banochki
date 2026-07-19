@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_controller.dart';
 import '../../../core/ui/banochki_theme.dart';
+import '../../../core/ui/batch_categories.dart';
 import '../../../core/ui/components.dart';
 
 final class EditBatchScreen extends ConsumerStatefulWidget {
@@ -18,6 +19,8 @@ final class EditBatchScreen extends ConsumerStatefulWidget {
 final class _EditBatchScreenState extends ConsumerState<EditBatchScreen> {
   late final TextEditingController _nameController;
   late final TextEditingController _volumeController;
+  late final TextEditingController _customCategoryController;
+  late final TextEditingController _customUnitController;
   late final TextEditingController _yearController;
   late final TextEditingController _recipeController;
   late final TextEditingController _commentController;
@@ -47,7 +50,13 @@ final class _EditBatchScreenState extends ConsumerState<EditBatchScreen> {
     );
     _recipeController = TextEditingController(text: batch.recipeName);
     _commentController = TextEditingController(text: batch.comment);
-    _category = batch.category;
+    _category = BatchCategories.isPreset(batch.category)
+        ? batch.category
+        : 'Другое';
+    _customCategoryController = TextEditingController(
+      text: _category == 'Другое' ? batch.category : '',
+    );
+    _customUnitController = TextEditingController(text: batch.quantityUnit);
     _preservedAt = batch.preservedAt;
     _checkAt = batch.checkAt;
     _spiciness = batch.spiciness;
@@ -57,6 +66,8 @@ final class _EditBatchScreenState extends ConsumerState<EditBatchScreen> {
   void dispose() {
     _nameController.dispose();
     _volumeController.dispose();
+    _customCategoryController.dispose();
+    _customUnitController.dispose();
     _yearController.dispose();
     _recipeController.dispose();
     _commentController.dispose();
@@ -81,25 +92,55 @@ final class _EditBatchScreenState extends ConsumerState<EditBatchScreen> {
               DropdownButtonFormField<String>(
                 initialValue: _category,
                 decoration: const InputDecoration(labelText: 'Категория'),
-                items: const ['Овощи', 'Фрукты', 'Варенье', 'Соусы', 'Другое']
+                items: BatchCategories.values
                     .map(
-                      (value) =>
-                          DropdownMenuItem(value: value, child: Text(value)),
+                      (value) => DropdownMenuItem(
+                        value: value.label,
+                        child: Row(
+                          children: [
+                            Icon(value.icon, size: 20),
+                            const SizedBox(width: BanochkiSpacing.sm),
+                            Text(value.label),
+                          ],
+                        ),
+                      ),
                     )
                     .toList(),
-                onChanged: (value) =>
-                    setState(() => _category = value ?? _category),
+                onChanged: (value) => setState(() {
+                  _category = value ?? _category;
+                  if (_category != 'Другое') {
+                    _customUnitController.text = BatchCategories.unitFor(
+                      _category,
+                    );
+                  }
+                }),
               ),
               const SizedBox(height: BanochkiSpacing.md),
-              TextField(
-                controller: _volumeController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                decoration: const InputDecoration(
-                  labelText: 'Объём',
-                  suffixText: 'мл',
+              if (_category == 'Другое') ...[
+                TextField(
+                  controller: _customCategoryController,
+                  decoration: const InputDecoration(
+                    labelText: 'Своя категория',
+                  ),
                 ),
-              ),
+                const SizedBox(height: BanochkiSpacing.md),
+                TextField(
+                  controller: _customUnitController,
+                  decoration: const InputDecoration(
+                    labelText: 'Единица измерения',
+                    hintText: 'шт., г, мл',
+                  ),
+                ),
+              ] else
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.straighten_outlined),
+                  title: const Text('Единица измерения'),
+                  trailing: Text(
+                    BatchCategories.unitFor(_category),
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ),
               const SizedBox(height: BanochkiSpacing.md),
               TextField(
                 controller: _yearController,
@@ -205,7 +246,8 @@ final class _EditBatchScreenState extends ConsumerState<EditBatchScreen> {
           .updateBatchMetadata(
             batchId: widget.batchId,
             name: _nameController.text,
-            category: _category,
+            category: _effectiveCategory,
+            quantityUnit: _quantityUnit,
             jarVolumeMl: int.tryParse(_volumeController.text),
             preservedAt: _preservedAt,
             harvestYear: int.tryParse(_yearController.text),
@@ -221,6 +263,13 @@ final class _EditBatchScreenState extends ConsumerState<EditBatchScreen> {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  String get _effectiveCategory =>
+      _category == 'Другое' ? _customCategoryController.text.trim() : _category;
+
+  String get _quantityUnit => _category == 'Другое'
+      ? _customUnitController.text.trim()
+      : BatchCategories.unitFor(_category);
 }
 
 String _dateLabel(DateTime? value) => value == null

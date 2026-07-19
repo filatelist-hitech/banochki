@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/app_controller.dart';
 import '../../../core/ui/banochki_theme.dart';
+import '../../../core/ui/batch_categories.dart';
 import '../../../core/ui/components.dart';
 import '../../inventory/domain/models.dart';
 import 'batch_confirmation_screen.dart';
@@ -21,11 +22,12 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
   final _nameController = TextEditingController();
   final _quantityController = TextEditingController(text: '1');
   final _commentController = TextEditingController();
-  final _customVolumeController = TextEditingController();
+  final _customCategoryController = TextEditingController();
+  final _customUnitController = TextEditingController(text: 'шт.');
   late final TextEditingController _harvestYearController;
   String? _locationId;
-  String _category = 'Другое';
-  int? _volumeMl = 700;
+  String _category = 'Овощи';
+  int? _volumeMl;
   late int _harvestYear;
   late DateTime _preservedAt;
   var _advanced = false;
@@ -46,7 +48,8 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
     _nameController.dispose();
     _quantityController.dispose();
     _commentController.dispose();
-    _customVolumeController.dispose();
+    _customCategoryController.dispose();
+    _customUnitController.dispose();
     _harvestYearController.dispose();
     super.dispose();
   }
@@ -89,9 +92,9 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
                   controller: _quantityController,
                   keyboardType: TextInputType.number,
                   inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  decoration: const InputDecoration(
-                    labelText: 'Количество банок',
-                    suffixText: 'шт.',
+                  decoration: InputDecoration(
+                    labelText: 'Количество',
+                    suffixText: _quantityUnit,
                   ),
                 ),
                 const SizedBox(height: BanochkiSpacing.md),
@@ -129,56 +132,56 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
                     DropdownButtonFormField<String>(
                       initialValue: _category,
                       decoration: const InputDecoration(labelText: 'Категория'),
-                      items:
-                          const [
-                                'Овощи',
-                                'Фрукты',
-                                'Варенье',
-                                'Соусы',
-                                'Другое',
-                              ]
-                              .map(
-                                (value) => DropdownMenuItem(
-                                  value: value,
-                                  child: Text(value),
-                                ),
-                              )
-                              .toList(),
-                      onChanged: (value) =>
-                          setState(() => _category = value ?? 'Другое'),
-                    ),
-                    const SizedBox(height: BanochkiSpacing.md),
-                    Text(
-                      'Объём банки',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    Wrap(
-                      spacing: BanochkiSpacing.xs,
-                      children: [
-                        for (final value in const [500, 700, 1000, 1500])
-                          ChoiceChip(
-                            label: Text(
-                              value >= 1000 ? '${value / 1000} л' : '$value мл',
+                      items: BatchCategories.values
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value.label,
+                              child: Row(
+                                children: [
+                                  Icon(value.icon, size: 20),
+                                  const SizedBox(width: BanochkiSpacing.sm),
+                                  Text(value.label),
+                                ],
+                              ),
                             ),
-                            selected: _volumeMl == value,
-                            onSelected: (_) =>
-                                setState(() => _volumeMl = value),
-                          ),
-                      ],
-                    ),
-                    const SizedBox(height: BanochkiSpacing.sm),
-                    TextField(
-                      controller: _customVolumeController,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                      decoration: const InputDecoration(
-                        labelText: 'Другой объём',
-                        suffixText: 'мл',
-                      ),
+                          )
+                          .toList(),
                       onChanged: (value) => setState(() {
-                        _volumeMl = int.tryParse(value);
+                        _category = value ?? 'Другое';
+                        if (_category != 'Другое') {
+                          _customUnitController.text = BatchCategories.unitFor(
+                            _category,
+                          );
+                        }
                       }),
                     ),
+                    const SizedBox(height: BanochkiSpacing.md),
+                    if (_category == 'Другое') ...[
+                      TextField(
+                        controller: _customCategoryController,
+                        decoration: const InputDecoration(
+                          labelText: 'Своя категория',
+                          hintText: 'Например, Специи',
+                        ),
+                      ),
+                      const SizedBox(height: BanochkiSpacing.md),
+                      TextField(
+                        controller: _customUnitController,
+                        decoration: const InputDecoration(
+                          labelText: 'Единица измерения',
+                          hintText: 'шт., г, мл',
+                        ),
+                      ),
+                    ] else
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.straighten_outlined),
+                        title: const Text('Единица измерения'),
+                        trailing: Text(
+                          BatchCategories.unitFor(_category),
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
                     const SizedBox(height: BanochkiSpacing.md),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -235,6 +238,11 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
       _quantityController.text = '${view.batch.initialQuantity}';
       _locationId = view.projection.currentLocationId;
       _category = view.batch.category;
+      if (!BatchCategories.isPreset(_category)) {
+        _customCategoryController.text = _category;
+        _category = 'Другое';
+      }
+      _customUnitController.text = view.batch.quantityUnit;
       _volumeMl = view.batch.jarVolumeMl;
       _harvestYear = DateTime.now().year;
       _harvestYearController.text = '$_harvestYear';
@@ -247,9 +255,12 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
     if (_nameController.text.trim().isEmpty ||
         quantity == null ||
         quantity <= 0 ||
-        _locationId == null) {
+        _locationId == null ||
+        _effectiveCategory.isEmpty ||
+        _quantityUnit.isEmpty) {
       setState(
-        () => _error = 'Заполните название, положительное количество и место.',
+        () => _error =
+            'Заполните название, количество, место, категорию и единицу измерения.',
       );
       return;
     }
@@ -265,7 +276,8 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
               name: _nameController.text,
               initialQuantity: quantity,
               storageLocationId: _locationId!,
-              category: _category,
+              category: _effectiveCategory,
+              quantityUnit: _quantityUnit,
               jarVolumeMl: _volumeMl,
               preservedAt: _preservedAt,
               harvestYear: _harvestYear,
@@ -286,6 +298,13 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
       if (mounted) setState(() => _saving = false);
     }
   }
+
+  String get _effectiveCategory =>
+      _category == 'Другое' ? _customCategoryController.text.trim() : _category;
+
+  String get _quantityUnit => _category == 'Другое'
+      ? _customUnitController.text.trim()
+      : BatchCategories.unitFor(_category);
 }
 
 String _locationPath(StorageLocation location, List<StorageLocation> all) {

@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../features/inventory/domain/models.dart';
+import 'batch_categories.dart';
 import 'banochki_theme.dart';
 
 final class PrimaryActionButton extends StatelessWidget {
@@ -32,18 +35,20 @@ final class PrimaryActionButton extends StatelessWidget {
 final class QuantityDisplay extends StatelessWidget {
   const QuantityDisplay({
     required this.quantity,
+    required this.unit,
     this.initialQuantity,
     this.large = false,
     super.key,
   });
 
   final int quantity;
+  final String unit;
   final int? initialQuantity;
   final bool large;
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Осталось $quantity банок',
+    label: 'Осталось $quantity $unit',
     child: ExcludeSemantics(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -60,7 +65,7 @@ final class QuantityDisplay extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: Text(
-              initialQuantity == null ? 'банок' : 'из $initialQuantity банок',
+              initialQuantity == null ? unit : 'из $initialQuantity $unit',
               style: TextStyle(fontSize: large ? 22 : 17),
             ),
           ),
@@ -152,7 +157,7 @@ final class BatchCard extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
     button: true,
     label:
-        '${view.batch.name}, осталось ${view.projection.displayQuantity} банок, ${view.locationPath}, ${view.status.label}',
+        '${view.batch.name}, осталось ${view.projection.displayQuantity} ${view.batch.quantityUnit}, ${view.locationPath}, ${view.status.label}',
     child: Card(
       child: InkWell(
         onTap: onTap,
@@ -168,11 +173,20 @@ final class BatchCard extends StatelessWidget {
                 width: large ? 76 : 64,
                 height: large ? 76 : 64,
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                  borderRadius: BorderRadius.circular(BanochkiRadius.control),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.secondaryContainer.withValues(alpha: 0.46),
+                  shape: BoxShape.circle,
                 ),
-                child: const ExcludeSemantics(
-                  child: Icon(Icons.inventory_2_outlined, size: 34),
+                child: ExcludeSemantics(
+                  child: Icon(
+                    BatchCategories.iconFor(
+                      name: view.batch.name,
+                      category: view.batch.category,
+                    ),
+                    size: large ? 38 : 32,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
                 ),
               ),
               const SizedBox(width: BanochkiSpacing.md),
@@ -182,23 +196,90 @@ final class BatchCard extends StatelessWidget {
                   children: [
                     Text(
                       view.batch.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: large ? 24 : 20,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: BanochkiSpacing.xs),
-                    Text(
-                      '${view.projection.displayQuantity} из ${view.batch.initialQuantity} банок'
-                      '${view.batch.jarVolumeMl == null ? '' : ' · ${_volume(view.batch.jarVolumeMl!)}'}'
-                      '${view.batch.harvestYear == null ? '' : ' · ${view.batch.harvestYear}'}',
+                    Text.rich(
+                      TextSpan(
+                        style: Theme.of(context).textTheme.bodyMedium,
+                        children: [
+                          TextSpan(
+                            text: '${view.projection.displayQuantity}',
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.secondary,
+                              fontSize: large ? 28 : 24,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                ' из ${view.batch.initialQuantity} ${view.batch.quantityUnit}'
+                                '${view.batch.jarVolumeMl == null ? '' : ' · ${_volume(view.batch.jarVolumeMl!)}'}'
+                                '${view.batch.harvestYear == null ? '' : ' · ${view.batch.harvestYear}'}',
+                          ),
+                        ],
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: BanochkiSpacing.xs),
-                    Text(view.locationPath),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.place_outlined,
+                          size: large ? 22 : 18,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: BanochkiSpacing.xxs),
+                        Expanded(
+                          child: Text(
+                            view.locationPath.replaceAll(' → ', ' · '),
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                     const SizedBox(height: BanochkiSpacing.xs),
                     StatusBadge(status: view.status),
                   ],
                 ),
+              ),
+              if (view.photoPath != null) ...[
+                const SizedBox(width: BanochkiSpacing.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(BanochkiRadius.control),
+                  child: Image.file(
+                    File(view.photoPath!),
+                    width: large ? 120 : 96,
+                    height: large ? 120 : 104,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: large ? 120 : 96,
+                      height: large ? 120 : 104,
+                      color: Theme.of(context).colorScheme.secondaryContainer,
+                      child: Icon(
+                        BatchCategories.iconFor(
+                          name: view.batch.name,
+                          category: view.batch.category,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                size: large ? 30 : 26,
               ),
             ],
           ),

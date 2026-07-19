@@ -30,10 +30,18 @@ abstract interface class InventoryRepository {
 
   Future<BatchView> createBatch(CreateBatchInput input);
 
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId);
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  });
+  Future<void> deleteBatchPhoto(String photoId);
+
   Future<void> updateBatchMetadata({
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,

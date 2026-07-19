@@ -112,10 +112,31 @@ final class AppController extends AsyncNotifier<AppViewState> {
     return result;
   }
 
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId) async =>
+      (await _repository).listBatchPhotos(batchId);
+
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  }) async {
+    final photo = await (await _repository).addBatchPhoto(
+      batchId: batchId,
+      localPath: localPath,
+    );
+    await refresh();
+    return photo;
+  }
+
+  Future<void> deleteBatchPhoto(String photoId) async {
+    await (await _repository).deleteBatchPhoto(photoId);
+    await refresh();
+  }
+
   Future<void> updateBatchMetadata({
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,
@@ -128,6 +149,7 @@ final class AppController extends AsyncNotifier<AppViewState> {
       batchId: batchId,
       name: name,
       category: category,
+      quantityUnit: quantityUnit,
       jarVolumeMl: jarVolumeMl,
       preservedAt: preservedAt,
       harvestYear: harvestYear,

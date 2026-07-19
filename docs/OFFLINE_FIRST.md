@@ -20,6 +20,8 @@ PDF использует встроенные локальные Roboto font ass
 
 Production database хранится как `banochki.sqlite` в app-private databases directory. Bootstrap открывает её через versioned migrations до отображения основного интерфейса. Integration test закрывает repository, создаёт новый database/repository instance и подтверждает сохранение партии, остатка 16 и четырёх событий.
 
+Выбранное фото копируется в app-private documents storage до записи `batch_photos`; поэтому путь не зависит от временного URI системного picker. Снимки и их превью доступны без сети и не меняют остаток партии.
+
 ## Расхождение остатка
 
 Локальный UI предупреждает до события, которое делает computed quantity отрицательным. Если физическое действие подтверждено, событие сохраняется, computed quantity остаётся отрицательным, UI показывает `0 · Нужно уточнить`. Исправление — только новым `INVENTORY_RECONCILED`.

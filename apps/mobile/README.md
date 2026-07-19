@@ -13,4 +13,4 @@ Core flow полностью локальный:
 Flutter UI → Riverpod application controller → Repository → SQLite
 ```
 
-R2 добавляет локальные QR payload/short code, сканер, PDF preview/print/share и свободные этикетки. Сетевых SDK и runtime-зависимости от backend в R1/R2 нет.
+R2 добавляет локальные QR payload/short code, сканер, PDF preview/print/share и свободные этикетки. Дополнительно реализованы локальные фото партии: app-private copy файла, листаемая галерея и превью в каталоге. Количество хранится вместе с единицей партии (`шт.`, `мл`, `г` или пользовательской). Сетевых SDK и runtime-зависимости от backend в R1/R2 нет.

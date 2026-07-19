@@ -10,6 +10,7 @@ import '../../inventory/domain/models.dart';
 import '../../inventory/presentation/inventory_dialogs.dart';
 import '../../inventory/presentation/reconcile_screen.dart';
 import 'edit_batch_screen.dart';
+import 'batch_photo_gallery.dart';
 import '../../qr/presentation/qr_label_screen.dart';
 
 final class BatchDetailsScreen extends ConsumerWidget {
@@ -70,19 +71,10 @@ final class BatchDetailsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      height: 160,
-                      width: double.infinity,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.secondaryContainer,
-                        borderRadius: BorderRadius.circular(
-                          BanochkiRadius.card,
-                        ),
-                      ),
-                      child: Semantics(
-                        label: 'Фото партии не добавлено',
-                        child: const Icon(Icons.inventory_2_outlined, size: 72),
-                      ),
+                    BatchPhotoGallery(
+                      batchId: batchId,
+                      batchName: view.batch.name,
+                      category: view.batch.category,
                     ),
                     const SizedBox(height: BanochkiSpacing.lg),
                     Text(
@@ -96,6 +88,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
                     QuantityDisplay(
                       quantity: view.projection.displayQuantity,
                       initialQuantity: view.batch.initialQuantity,
+                      unit: view.batch.quantityUnit,
                       large: large,
                     ),
                     const SizedBox(height: BanochkiSpacing.md),
@@ -112,7 +105,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
                               const Text(
-                                'Расчёт и физические действия разошлись. Посчитайте банки, история сохранится.',
+                                'Расчёт и физические действия разошлись. Пересчитайте запас, история сохранится.',
                               ),
                               const SizedBox(height: BanochkiSpacing.sm),
                               FilledButton(
@@ -132,7 +125,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
                     const SizedBox(height: BanochkiSpacing.lg),
                     PrimaryActionButton(
                       key: const Key('take-one'),
-                      label: 'Взял 1',
+                      label: 'Взял 1 ${view.batch.quantityUnit}',
                       icon: Icons.remove_circle_outline,
                       large: large,
                       onPressed: view.batch.isArchived
@@ -143,7 +136,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
                               view,
                               InventoryEventType.jarsTaken,
                               1,
-                              'Взята 1 банка',
+                              'Взято 1 ${view.batch.quantityUnit}',
                             ),
                     ),
                     const SizedBox(height: BanochkiSpacing.sm),
@@ -156,7 +149,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
                               view,
                               InventoryEventType.jarsTaken,
                               'Сколько взяли?',
-                              'Банки взяты',
+                              'Запас уменьшен',
                             ),
                       child: const Text('Взял несколько'),
                     ),
@@ -174,7 +167,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
                                   view,
                                   InventoryEventType.jarsReturned,
                                   'Сколько вернули?',
-                                  'Банки возвращены',
+                                  'Запас возвращён',
                                 ),
                           icon: const Icon(Icons.keyboard_return),
                           label: const Text('Вернул банки'),
@@ -215,7 +208,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: BanochkiSpacing.sm),
                             Text('Категория: ${view.batch.category}'),
-                            Text('Объём: ${_volume(view.batch.jarVolumeMl)}'),
+                            Text('Единица: ${view.batch.quantityUnit}'),
                             Text(
                               'Год: ${view.batch.harvestYear ?? 'не указан'}',
                             ),
@@ -275,6 +268,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
     final quantity = await showQuantityDialog(
       context,
       title: question,
+      unit: view.batch.quantityUnit,
       large: ref
           .read(appControllerProvider)
           .requireValue
@@ -303,7 +297,10 @@ final class BatchDetailsScreen extends ConsumerWidget {
         quantity: quantity,
       );
     } on UnderflowConfirmationRequired {
-      if (!context.mounted || !await showUnderflowWarning(context)) return;
+      if (!context.mounted ||
+          !await showUnderflowWarning(context, unit: view.batch.quantityUnit)) {
+        return;
+      }
       await controller.recordEvent(
         batchId: batchId,
         type: type,
@@ -329,6 +326,7 @@ final class BatchDetailsScreen extends ConsumerWidget {
       context,
       title: success,
       remaining: updated.projection.displayQuantity,
+      unit: updated.batch.quantityUnit,
       large:
           updated.batch.batchId == view.batch.batchId &&
           ref

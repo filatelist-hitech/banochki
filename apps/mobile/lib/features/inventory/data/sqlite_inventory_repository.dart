@@ -70,6 +70,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
       'inventory_events',
       orderBy: 'created_at DESC, event_id DESC',
     )).map(_eventFromRow).toList(growable: false);
+    final photos = (await db.query(
+      'batch_photos',
+      orderBy: 'created_at DESC, photo_id DESC',
+    )).map(_photoFromRow).toList(growable: false);
 
     final settings = settingsRows.isEmpty
         ? const AppSettings()
@@ -78,6 +82,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
     final projectionsByBatch = {
       for (final item in projections) item.batchId: item,
     };
+    final latestPhotoByBatch = <String, BatchPhoto>{};
+    for (final photo in photos) {
+      latestPhotoByBatch.putIfAbsent(photo.batchId, () => photo);
+    }
     final views = <BatchView>[];
     for (final batch in batches) {
       final projection = projectionsByBatch[batch.batchId];
@@ -96,6 +104,7 @@ final class SqliteInventoryRepository implements InventoryRepository {
             lowStockThreshold: settings.lowStockThreshold,
             now: _clock.nowUtc(),
           ),
+          photoPath: latestPhotoByBatch[batch.batchId]?.localPath,
         ),
       );
     }
@@ -360,6 +369,9 @@ final class SqliteInventoryRepository implements InventoryRepository {
     if (input.initialQuantity <= 0) {
       throw const ValidationException('Количество должно быть больше нуля.');
     }
+    if (input.quantityUnit.trim().isEmpty) {
+      throw const ValidationException('Укажите единицу измерения.');
+    }
     if (input.jarVolumeMl != null && input.jarVolumeMl! <= 0) {
       throw const ValidationException('Объём должен быть больше нуля.');
     }
@@ -391,6 +403,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
         'name': name,
         'category': _requiredName(input.category, 'Выберите категорию.'),
         'initial_quantity': input.initialQuantity,
+        'quantity_unit': _requiredName(
+          input.quantityUnit,
+          'Укажите единицу измерения.',
+        ),
         'jar_volume_ml': input.jarVolumeMl,
         'preserved_at': _date(input.preservedAt),
         'harvest_year': input.harvestYear,
@@ -440,10 +456,80 @@ final class SqliteInventoryRepository implements InventoryRepository {
   }
 
   @override
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId) async {
+    final db = await _database.open();
+    final context = await _context(db);
+    final rows = await db.rawQuery(
+      '''
+      SELECT batch_photos.* FROM batch_photos
+      JOIN batches ON batches.batch_id = batch_photos.batch_id
+      WHERE batch_photos.batch_id = ? AND batches.family_id = ?
+      ORDER BY batch_photos.created_at DESC
+      ''',
+      [batchId, context.familyId],
+    );
+    return rows.map(_photoFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  }) async {
+    if (localPath.trim().isEmpty) {
+      throw const ValidationException('Выберите фото для партии.');
+    }
+    final db = await _database.open();
+    late BatchPhoto photo;
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      final batch = await tx.query(
+        'batches',
+        columns: ['batch_id'],
+        where: 'batch_id = ? AND family_id = ?',
+        whereArgs: [batchId, context.familyId],
+        limit: 1,
+      );
+      if (batch.isEmpty) throw const NotFoundException('Партия не найдена.');
+      photo = BatchPhoto(
+        photoId: _ids.next(),
+        batchId: batchId,
+        localPath: localPath,
+        createdAt: _clock.nowUtc(),
+      );
+      await tx.insert('batch_photos', <String, Object?>{
+        'photo_id': photo.photoId,
+        'batch_id': photo.batchId,
+        'local_path': photo.localPath,
+        'created_at': _iso(photo.createdAt),
+      });
+    });
+    return photo;
+  }
+
+  @override
+  Future<void> deleteBatchPhoto(String photoId) async {
+    final db = await _database.open();
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      await tx.rawDelete(
+        '''
+        DELETE FROM batch_photos
+        WHERE photo_id = ? AND batch_id IN (
+          SELECT batch_id FROM batches WHERE family_id = ?
+        )
+        ''',
+        [photoId, context.familyId],
+      );
+    });
+  }
+
+  @override
   Future<void> updateBatchMetadata({
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,
@@ -454,6 +540,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
   }) async {
     final nameValue = _requiredName(name, 'Введите название партии.');
     final categoryValue = _requiredName(category, 'Выберите категорию.');
+    final quantityUnitValue = _requiredName(
+      quantityUnit,
+      'Укажите единицу измерения.',
+    );
     if (jarVolumeMl != null && jarVolumeMl <= 0) {
       throw const ValidationException('Объём должен быть больше нуля.');
     }
@@ -481,6 +571,7 @@ final class SqliteInventoryRepository implements InventoryRepository {
         payload: <String, Object?>{
           'name': nameValue,
           'category': categoryValue,
+          'quantity_unit': quantityUnitValue,
           'jar_volume_ml': jarVolumeMl,
           'harvest_year': harvestYear,
         },
@@ -495,6 +586,7 @@ final class SqliteInventoryRepository implements InventoryRepository {
         <String, Object?>{
           'name': nameValue,
           'category': categoryValue,
+          'quantity_unit': quantityUnitValue,
           'jar_volume_ml': jarVolumeMl,
           'preserved_at': _date(preservedAt),
           'harvest_year': harvestYear,
@@ -1381,6 +1473,7 @@ Batch _batchFromRow(Map<String, Object?> row) => Batch(
   name: row['name']! as String,
   category: row['category']! as String,
   initialQuantity: row['initial_quantity']! as int,
+  quantityUnit: row['quantity_unit'] as String? ?? 'шт.',
   jarVolumeMl: row['jar_volume_ml'] as int?,
   preservedAt: _optionalTime(row['preserved_at']),
   harvestYear: row['harvest_year'] as int?,
@@ -1393,6 +1486,13 @@ Batch _batchFromRow(Map<String, Object?> row) => Batch(
   createdAt: _time(row['created_at']),
   updatedAt: _time(row['updated_at']),
   archivedAt: _optionalTime(row['archived_at']),
+);
+
+BatchPhoto _photoFromRow(Map<String, Object?> row) => BatchPhoto(
+  photoId: row['photo_id']! as String,
+  batchId: row['batch_id']! as String,
+  localPath: row['local_path']! as String,
+  createdAt: _time(row['created_at']),
 );
 
 InventoryEvent _eventFromRow(Map<String, Object?> row) => InventoryEvent(

@@ -46,6 +46,7 @@ dependencies:
   qr_flutter: 4.1.0
   pdf: 3.13.0
   printing: 5.15.0
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
@@ -73,9 +74,13 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  assets:
-    - assets/fonts/Roboto-Regular.ttf
-    - assets/fonts/Roboto-Bold.ttf
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

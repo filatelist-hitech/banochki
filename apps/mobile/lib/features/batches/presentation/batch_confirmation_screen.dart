@@ -30,7 +30,7 @@ final class BatchConfirmationScreen extends ConsumerWidget {
               child: Semantics(
                 liveRegion: true,
                 label:
-                    '${view.batch.name}. ${view.projection.displayQuantity} банок. ${view.locationPath}. Партия сохранена.',
+                    '${view.batch.name}. ${view.projection.displayQuantity} ${view.batch.quantityUnit}. ${view.locationPath}. Партия сохранена.',
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,7 +42,7 @@ final class BatchConfirmationScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: BanochkiSpacing.lg),
                     Text(
-                      view.batch.name.toUpperCase(),
+                      view.batch.name,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 34,
@@ -51,7 +51,7 @@ final class BatchConfirmationScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: BanochkiSpacing.lg),
                     Text(
-                      '${view.projection.displayQuantity} БАНОК',
+                      '${view.projection.displayQuantity} ${view.batch.quantityUnit}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 42,

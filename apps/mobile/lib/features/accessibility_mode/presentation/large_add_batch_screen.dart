@@ -283,7 +283,7 @@ final class _LargeAddBatchScreenState
           ),
           const SizedBox(height: BanochkiSpacing.lg),
           Text(
-            '${view.projection.displayQuantity} БАНОК',
+            '${view.projection.displayQuantity} банок',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 46, fontWeight: FontWeight.w900),
           ),

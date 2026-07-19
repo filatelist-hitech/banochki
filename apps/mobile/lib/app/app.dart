@@ -7,9 +7,9 @@ import '../features/accessibility_mode/presentation/large_home_screen.dart';
 import '../features/batches/presentation/catalog_screen.dart';
 import '../features/history/presentation/history_screen.dart';
 import '../features/home/presentation/home_screen.dart';
-import '../features/locations/presentation/locations_screen.dart';
 import '../features/onboarding/presentation/onboarding_screen.dart';
 import '../features/settings/presentation/settings_screen.dart';
+import '../features/qr/presentation/qr_scanner_screen.dart';
 import '../l10n/app_localizations.dart';
 import '../features/inventory/domain/models.dart';
 import 'app_controller.dart';
@@ -108,7 +108,7 @@ final class _MainShellState extends State<MainShell> {
   static const _pages = <Widget>[
     HomeScreen(),
     CatalogScreen(),
-    LocationsScreen(),
+    QrScannerScreen(),
     HistoryScreen(),
     SettingsScreen(),
   ];
@@ -122,7 +122,7 @@ final class _MainShellState extends State<MainShell> {
         icon: Icon(Icons.inventory_2_outlined),
         label: 'Запасы',
       ),
-      NavigationDestination(icon: Icon(Icons.place_outlined), label: 'Места'),
+      NavigationDestination(icon: Icon(Icons.qr_code_scanner), label: 'Сканер'),
       NavigationDestination(icon: Icon(Icons.history), label: 'История'),
       NavigationDestination(icon: Icon(Icons.settings_outlined), label: 'Ещё'),
     ];

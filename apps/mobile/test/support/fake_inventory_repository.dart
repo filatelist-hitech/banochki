@@ -29,6 +29,7 @@ final class FakeInventoryRepository implements InventoryRepository {
       name: input.name.trim(),
       category: input.category,
       initialQuantity: input.initialQuantity,
+      quantityUnit: input.quantityUnit,
       jarVolumeMl: input.jarVolumeMl,
       preservedAt: input.preservedAt,
       harvestYear: input.harvestYear,
@@ -83,6 +84,23 @@ final class FakeInventoryRepository implements InventoryRepository {
     );
     return view;
   }
+
+  @override
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId) async => const [];
+
+  @override
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  }) async => BatchPhoto(
+    photoId: _id,
+    batchId: batchId,
+    localPath: localPath,
+    createdAt: DateTime.now().toUtc(),
+  );
+
+  @override
+  Future<void> deleteBatchPhoto(String photoId) async {}
 
   @override
   Future<void> updateSettings(AppSettings settings) async {
@@ -208,6 +226,7 @@ final class FakeInventoryRepository implements InventoryRepository {
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,

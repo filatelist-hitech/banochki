@@ -26,6 +26,8 @@ Baseline: WCAG 2.2 AA + platform semantics.
 - Flutter guidelines для Android tap targets, labeled targets и text contrast на large home;
 - `needs_reconciliation` отображается текстом без отрицательного display quantity;
 - large home и confirmation actions присутствуют.
+- карточки каталога имеют запас по высоте для превью и двухстрочного названия; переполнение `RenderFlex` не допускается.
+- фото партии перелистываются горизонтальным жестом и показывают текстовый счётчик текущего снимка.
 
 ## Не проверено физически
 

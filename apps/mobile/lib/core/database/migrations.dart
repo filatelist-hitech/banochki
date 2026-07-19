@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 
-const databaseSchemaVersion = 3;
+const databaseSchemaVersion = 4;
 
 Future<void> applyMigration(DatabaseExecutor db, int version) async {
   switch (version) {
@@ -10,6 +10,8 @@ Future<void> applyMigration(DatabaseExecutor db, int version) async {
       await _createIndexesAndMetadata(db);
     case 3:
       await _createQrSchema(db);
+    case 4:
+      await _addQuantityUnits(db);
     default:
       throw StateError('Неизвестная миграция базы: $version');
   }
@@ -236,4 +238,28 @@ Future<void> _createIndexesAndMetadata(DatabaseExecutor db) async {
     'key': 'schema_version',
     'value': '$databaseSchemaVersion',
   });
+}
+
+Future<void> _addQuantityUnits(DatabaseExecutor db) async {
+  await db.execute(
+    "ALTER TABLE batches ADD COLUMN quantity_unit TEXT NOT NULL DEFAULT 'шт.'",
+  );
+  await db.execute('''
+    UPDATE batches
+    SET quantity_unit = CASE category
+      WHEN 'Варенье' THEN 'мл'
+      WHEN 'Соусы' THEN 'мл'
+      WHEN 'Напитки' THEN 'мл'
+      WHEN 'Грибы' THEN 'г'
+      WHEN 'Заморозка' THEN 'г'
+      WHEN 'Сушка' THEN 'г'
+      ELSE 'шт.'
+    END
+  ''');
+  await db.update(
+    'schema_metadata',
+    <String, Object?>{'value': '$databaseSchemaVersion'},
+    where: 'key = ?',
+    whereArgs: ['schema_version'],
+  );
 }

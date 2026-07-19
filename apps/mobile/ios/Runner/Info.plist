@@ -27,7 +27,9 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Камера нужна только для чтения QR-этикеток баночек.</string>
+	<string>Камера нужна для чтения QR-этикеток и фотографий домашних заготовок.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Фото нужны, чтобы прикрепить снимок к партии домашних заготовок.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

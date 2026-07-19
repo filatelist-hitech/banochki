@@ -94,7 +94,7 @@ final class CatalogScreen extends ConsumerWidget {
                         ),
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: columns,
-                          mainAxisExtent: large ? 270 : 192,
+                          mainAxisExtent: large ? 310 : 240,
                           crossAxisSpacing: BanochkiSpacing.md,
                           mainAxisSpacing: BanochkiSpacing.sm,
                         ),
