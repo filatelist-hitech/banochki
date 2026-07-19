@@ -18,9 +18,9 @@ flutter build ios --simulator --debug
 
 - unit: reducer/status/search normalization;
 - repository: quantity events, ordering, idempotency, rebuild, reconciliation, move, cycle, archive/restore, validation, search/filter, metadata event;
-- database: fresh create, v1→v2 migration, foreign keys, indexes, atomic create, reopen persistence, duplicate ids/keys, append-only triggers;
+- database: fresh create, v1→v3 migration, foreign keys, indexes, atomic create, reopen persistence, duplicate ids/keys, append-only triggers;
 - widget: empty catalog, card, add/validation/confirmation, large mode, 200% text, semantics, `needs_reconciliation`;
-- integration: clean onboarding → location tree → batch 18 → take 2 → return 1 → spoil 1 → remaining 16 → four events → repository restart → same data/history.
+- integration: clean onboarding → location tree → batch 18 → QR batch label → inventory events → restart → short-code resolve → same data/history.
 - QR unit/repository: opaque payload parser/version, Luhn checksum, stable batch label, unlinked→linked transaction, revoked/replaced resolution, scanner state mapping, vector A4 PDF for all templates and separation from inventory events.
 
 ## Последний фактический прогон — 2026-07-19

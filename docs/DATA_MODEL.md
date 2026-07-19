@@ -1,4 +1,4 @@
-# Модель данных R1
+# Модель данных R1/R2
 
 SQLite schema version: **3**.
 
@@ -31,6 +31,8 @@ SQLite schema version: **3**.
 ## QR R2
 
 QR payload: `banochki://qr/v1/<base64url-random-token>`. В нём нет PII или данных партии. `short_code` имеет вид `XXXXXX-C`, где `C` — Luhn checksum; `(family_id, short_code)` и `public_token` уникальны. Linked targets проверяются в одной SQLite transaction; QR не меняет остаток и не добавляет inventory event.
+
+`target_type` допускает `batch`, `storage_location`, `unlinked`; `state` — `unlinked`, `active`, `revoked`, `replaced`. Свободная этикетка становится active только после явной пользовательской привязки. Отзыв и перевыпуск сохраняют историю через `qr_events`; token/short code не переиспользуются.
 
 ## События R1
 

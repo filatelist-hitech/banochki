@@ -1,6 +1,6 @@
 # Banochki mobile
 
-Flutter-приложение этапа **R1: Local foundation**.
+Flutter-приложение этапов **R1: Local foundation** и **R2: QR workflow**.
 
 - [Описание проекта и быстрый старт](../../README.md)
 - [Подробный гайд по запуску](../../docs/GETTING_STARTED.md)
@@ -13,4 +13,4 @@ Core flow полностью локальный:
 Flutter UI → Riverpod application controller → Repository → SQLite
 ```
 
-Сетевых SDK и runtime-зависимости от backend в R1 нет.
+R2 добавляет локальные QR payload/short code, сканер, PDF preview/print/share и свободные этикетки. Сетевых SDK и runtime-зависимости от backend в R1/R2 нет.

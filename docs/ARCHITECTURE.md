@@ -1,4 +1,4 @@
-# Архитектура R1
+# Архитектура R1/R2
 
 ## Граница этапа
 
@@ -41,8 +41,14 @@ Riverpod 3 используется как единственная систем
 - каталог от 900 px использует две колонки;
 - крупный режим увеличивает touch targets и высоту карточек, но использует те же entities/repository.
 
-## Расширение после R1
+## QR flow R2
+
+`QrScannerScreen` принимает только QR, временно останавливает camera stream после первого результата и вызывает `AppController.resolveQr`. Resolution возвращает existing batch/location, user-confirmed link flow для `unlinked` или понятное локальное состояние для unknown/invalid/revoked/replaced QR. UI не делает SQL и не меняет inventory при сканировании.
+
+`LabelSheetScreen` собирает выбранные партии или новые свободные labels, `LabelPdf` локально создаёт A4 PDF и встраивает Roboto TTF из app assets для кириллицы. `printing` отвечает только за preview, системную печать и share sheet.
+
+## Расширение после R2
 
 Будущая синхронизация должна подключаться за repository boundary и принимать локальный event log как исходящий поток. Нельзя добавлять прямые сетевые вызовы в UI или превращать server projection в единственный источник остатка.
 
-QR token и short code уже содержат device/member provenance и стабильны для R3; они не зависят от часов устройства и не попадают в inventory analytics/logging.
+QR token и short code уже содержат device/member provenance и стабильны для R3; они не зависят от часов устройства и не попадают в inventory analytics/logging. R3 должен синхронизировать lifecycle QR записи, а не выпускать новые token при обычном edit партии.

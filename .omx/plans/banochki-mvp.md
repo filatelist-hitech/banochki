@@ -1,6 +1,6 @@
 # План реализации MVP «Баночки»
 
-- Статус: Active; R1 Local foundation — implemented and verified
+- Статус: Active; R1 Local foundation и R2 QR workflow — implemented and verified
 - Дата: 2026-07-19
 - Основание: `PRODUCT_SPEC.md`, `DESIGN.md`
 - Режим планирования: direct; исходный бриф подробный, кодовая база отсутствует.
@@ -25,7 +25,7 @@
 | Locations | DONE | create/edit/nesting/move/cycle guard/archive guard/full path |
 | Batch/catalog/history | DONE | create/edit/archive/search/filter/sort/details/actions/history |
 | Large mode | DONE | large home, step-by-step create, large confirmation, shared repository |
-| Automated QA | DONE | analyze 0 issues, 27 tests, iOS+Android integration PASS |
+| Automated QA | DONE | analyze 0 issues, 35 tests, iOS+Android integration PASS |
 | Debug builds | DONE | Android APK and iOS Simulator app |
 | Physical accessibility evidence | NOT_RUN | VoiceOver/TalkBack/target-user matrix remains beta evidence |
 
@@ -38,6 +38,14 @@
 - Platform baseline — `docs/adr/0005-platform-baseline.md`.
 - Reconciliation — `docs/adr/0006-reconciliation.md`.
 - Scope/event vocabulary — `docs/adr/0007-r1-scope-contract.md`.
+
+### R2 architectural decisions
+
+- QR payload v1 — `docs/adr/0008-qr-payload-format.md`.
+- Short-code generation — `docs/adr/0009-short-code-generation.md`.
+- Scanner dependency — `docs/adr/0010-qr-scanning-dependency.md`.
+- Local PDF labels — `docs/adr/0011-pdf-label-generation.md`.
+- Linked and unlinked labels — `docs/adr/0012-linked-and-unlinked-labels.md`.
 
 ## Requirements Summary
 
