@@ -34,6 +34,7 @@ Baseline: WCAG 2.2 AA + platform semantics.
 - Switch Access / external keyboard: `NOT_RUN`;
 - пять целевых пользователей и ≥85% task success: `NOT_RUN`;
 - инструментальный scanner контраста всей матрицы экранов/состояний: `NOT_RUN` (large home automated guideline — PASS).
-- camera permission, flashlight, physical screen/paper scan, PDF system preview/share: `NOT_RUN` до отдельной ручной device matrix.
+- physical iPhone QR scan и ручной short-code search: `PASS` (пользовательская проверка, 2026-07-19).
+- flashlight, paper scan, PDF system preview/share и VoiceOver/TalkBack: `NOT_RUN` до отдельной ручной matrix.
 
 Эти пункты нельзя считать PASS по результатам widget tests; они остаются release evidence перед beta.

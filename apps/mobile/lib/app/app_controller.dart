@@ -203,6 +203,30 @@ final class AppController extends AsyncNotifier<AppViewState> {
   Future<QrResolveResult> resolveShortCode(String shortCode) async =>
       (await _repository).resolveShortCode(shortCode);
 
+  Future<QrCode> linkQrToBatch({
+    required String qrId,
+    required String batchId,
+  }) async {
+    final result = await (await _repository).linkQrToBatch(
+      qrId: qrId,
+      batchId: batchId,
+    );
+    await refresh();
+    return result;
+  }
+
+  Future<QrCode> linkQrToLocation({
+    required String qrId,
+    required String locationId,
+  }) async {
+    final result = await (await _repository).linkQrToStorageLocation(
+      qrId: qrId,
+      locationId: locationId,
+    );
+    await refresh();
+    return result;
+  }
+
   Future<void> seedDebugData() async {
     await (await _repository).seedDebugData();
     await refresh();

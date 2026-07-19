@@ -21,7 +21,7 @@ flutter build ios --simulator --debug
 - database: fresh create, v1→v2 migration, foreign keys, indexes, atomic create, reopen persistence, duplicate ids/keys, append-only triggers;
 - widget: empty catalog, card, add/validation/confirmation, large mode, 200% text, semantics, `needs_reconciliation`;
 - integration: clean onboarding → location tree → batch 18 → take 2 → return 1 → spoil 1 → remaining 16 → four events → repository restart → same data/history.
-- QR unit/repository: opaque payload parser/version, Luhn checksum, stable batch label, unlinked→linked transaction, revoked/replaced resolution, and separation from inventory events.
+- QR unit/repository: opaque payload parser/version, Luhn checksum, stable batch label, unlinked→linked transaction, revoked/replaced resolution, scanner state mapping, vector A4 PDF for all templates and separation from inventory events.
 
 ## Последний фактический прогон — 2026-07-19
 
@@ -46,8 +46,8 @@ flutter build ios --simulator --debug
 | `flutter pub get` | PASS |
 | `dart format --set-exit-if-changed .` | PASS |
 | `flutter analyze` | PASS, 0 issues |
-| `flutter test` | PASS, 33 tests |
-| R2 integration on physical iPhone | NOT_RUN: `devicectl` launched the app stopped under LLDB and did not return a test result; process was stopped without changing app data |
-| Android debug artifact | updated `build/app/outputs/flutter-apk/app-debug.apk` at 20:36; terminal did not return a final exit status |
-| iOS simulator artifact | updated `build/ios/iphonesimulator/Runner.app` at 20:36; terminal did not return a final exit status |
-| camera permission / flashlight / paper scan / PDF preview-share | NOT_RUN |
+| `flutter test` | PASS, 35 tests |
+| R2 manual physical iPhone | PASS (user-verified): QR scan, manual short-code search and QR resolution |
+| `flutter build apk --debug` | PASS, includes local PDF fonts and QR scanner |
+| `flutter build ios --simulator --debug` | PASS, Xcode build done |
+| physical Android / flashlight / paper scan / PDF preview-share / VoiceOver-TalkBack | NOT_RUN |

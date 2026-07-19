@@ -7,6 +7,7 @@ import '../../batches/presentation/batch_details_screen.dart';
 import '../domain/qr_models.dart';
 import 'manual_code_screen.dart';
 import 'location_qr_details_screen.dart';
+import 'link_unlinked_qr_screen.dart';
 
 enum ScannerState {
   initial,
@@ -26,6 +27,15 @@ enum ScannerState {
   paused,
   closed,
 }
+
+ScannerState scannerStateFor(QrResolutionKind kind) => switch (kind) {
+  QrResolutionKind.resolved => ScannerState.resolved,
+  QrResolutionKind.unknown => ScannerState.unknownCode,
+  QrResolutionKind.invalid => ScannerState.invalidCode,
+  QrResolutionKind.unsupported => ScannerState.unsupportedVersion,
+  QrResolutionKind.unlinked => ScannerState.unlinkedCode,
+  QrResolutionKind.revoked || QrResolutionKind.replaced => ScannerState.error,
+};
 
 final class QrScannerScreen extends ConsumerStatefulWidget {
   const QrScannerScreen({super.key});
@@ -178,9 +188,9 @@ final class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
         .read(appControllerProvider.notifier)
         .resolveQr(raw);
     if (!mounted) return;
+    setState(() => _state = scannerStateFor(result.kind));
     switch (result.kind) {
       case QrResolutionKind.resolved:
-        setState(() => _state = ScannerState.resolved);
         if (result.qrCode!.targetType == QrTargetType.batch) {
           await Navigator.of(context).pushReplacement(
             MaterialPageRoute<void>(
@@ -203,7 +213,11 @@ final class _QrScannerScreenState extends ConsumerState<QrScannerScreen>
       case QrResolutionKind.unsupported:
         _show('Версия QR пока не поддерживается');
       case QrResolutionKind.unlinked:
-        _show('Свободная этикетка: привяжите её к партии или месту.');
+        await Navigator.of(context).pushReplacement(
+          MaterialPageRoute<void>(
+            builder: (_) => LinkUnlinkedQrScreen(qr: result.qrCode!),
+          ),
+        );
       case QrResolutionKind.revoked:
         _show('Этот QR-код отозван');
       case QrResolutionKind.replaced:

@@ -1,13 +1,12 @@
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:qr_flutter/qr_flutter.dart' hide QrCode;
 
 import '../../../core/ui/banochki_theme.dart';
 import '../domain/qr_models.dart';
+import '../domain/label_pdf.dart';
 
 final class QrLabelScreen extends StatelessWidget {
   const QrLabelScreen({
@@ -119,44 +118,12 @@ final class QrLabelScreen extends StatelessWidget {
   }
 
   Future<void> _sharePdf(BuildContext context) async {
-    final doc = pw.Document();
-    doc.addPage(
-      pw.Page(
-        pageFormat: PdfPageFormat.a4,
-        build: (_) => pw.Center(
-          child: pw.Container(
-            width: 72 * 3.5,
-            padding: const pw.EdgeInsets.all(16),
-            decoration: pw.BoxDecoration(border: pw.Border.all()),
-            child: pw.Column(
-              mainAxisSize: pw.MainAxisSize.min,
-              children: [
-                pw.BarcodeWidget(
-                  barcode: pw.Barcode.qrCode(),
-                  data: qr.payload,
-                  width: 160,
-                  height: 160,
-                ),
-                pw.SizedBox(height: 10),
-                pw.Text(
-                  qr.shortCode,
-                  style: pw.TextStyle(
-                    fontSize: 18,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                pw.SizedBox(height: 4),
-                pw.Text(title, textAlign: pw.TextAlign.center),
-                if (subtitle != null)
-                  pw.Text(subtitle!, textAlign: pw.TextAlign.center),
-              ],
-            ),
-          ),
-        ),
-      ),
+    final bytes = await LabelPdf.build(
+      labels: [PrintableLabel(qr: qr, name: title, location: subtitle)],
+      template: LabelTemplate.large,
     );
     await Printing.sharePdf(
-      bytes: await doc.save(),
+      bytes: bytes,
       filename: 'banochki-${qr.shortCode}.pdf',
     );
   }

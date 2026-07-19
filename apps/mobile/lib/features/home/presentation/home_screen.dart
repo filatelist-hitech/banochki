@@ -9,6 +9,7 @@ import '../../batches/presentation/batch_details_screen.dart';
 import '../../inventory/domain/models.dart';
 import '../../locations/presentation/location_form_screen.dart';
 import '../../qr/presentation/qr_scanner_screen.dart';
+import '../../qr/presentation/label_sheet_screen.dart';
 
 final class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -44,6 +45,13 @@ final class HomeScreen extends ConsumerWidget {
           ],
         ),
         actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const LabelSheetScreen()),
+            ),
+            icon: const Icon(Icons.print_outlined),
+            tooltip: 'Печатные этикетки',
+          ),
           IconButton(
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const QrScannerScreen()),
