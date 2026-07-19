@@ -220,12 +220,13 @@
 | `JARS_RETURNED` | `> 0` | quantity | увеличивает остаток |
 | `JARS_SPOILED` | `< 0` | quantity, optional reason | уменьшает остаток, не делает safety-выводов |
 | `BATCH_MOVED` | `0` | from/to location | меняет текущее место |
-| `BATCH_EDITED` | `0` | changed fields + prior versions | обновляет метаданные по правилам conflict resolution |
+| `BATCH_METADATA_UPDATED` | `0` | changed fields + prior versions | обновляет метаданные по правилам conflict resolution |
 | `NOTE_ADDED` | `0` | text/audio reference | добавляет неизменяемую заметку |
 | `REQUEST_FULFILLED` | `< 0` | request item + quantity | списывает запас и закрывает часть заявки |
 | `INVENTORY_RECONCILED` | signed | counted quantity + reason | компенсирует расхождение без переписывания истории |
 | `ACTION_REVERSED` | inverse | reversed event id | явная отмена допустимого события |
 | `BATCH_ARCHIVED` | `0` | reason | скрывает из активного каталога |
+| `BATCH_RESTORED` | `0` | reason | возвращает партию из архива без переписывания истории |
 
 ### Envelope события
 
@@ -867,8 +868,8 @@ create type member_status as enum ('invited', 'active', 'suspended', 'left');
 create type batch_lifecycle as enum ('active', 'needs_check', 'spoiled', 'finished', 'archived');
 create type inventory_event_type as enum (
   'BATCH_CREATED', 'JARS_TAKEN', 'JARS_RETURNED', 'JARS_SPOILED',
-  'BATCH_MOVED', 'BATCH_EDITED', 'NOTE_ADDED', 'REQUEST_FULFILLED',
-  'INVENTORY_RECONCILED', 'ACTION_REVERSED', 'BATCH_ARCHIVED'
+  'BATCH_MOVED', 'BATCH_METADATA_UPDATED', 'NOTE_ADDED', 'REQUEST_FULFILLED',
+  'INVENTORY_RECONCILED', 'ACTION_REVERSED', 'BATCH_ARCHIVED', 'BATCH_RESTORED'
 );
 create type operation_status as enum ('accepted', 'rejected', 'needs_attention');
 create type request_status as enum ('new', 'in_progress', 'fulfilled', 'cancelled');
@@ -1036,7 +1037,7 @@ create table inventory_events (
     (type in ('JARS_TAKEN', 'JARS_SPOILED', 'REQUEST_FULFILLED') and quantity_delta < 0) or
     (type = 'JARS_RETURNED' and quantity_delta > 0) or
     (type in ('INVENTORY_RECONCILED', 'ACTION_REVERSED')) or
-    (type in ('BATCH_MOVED', 'BATCH_EDITED', 'NOTE_ADDED', 'BATCH_ARCHIVED') and quantity_delta = 0)
+    (type in ('BATCH_MOVED', 'BATCH_METADATA_UPDATED', 'NOTE_ADDED', 'BATCH_ARCHIVED', 'BATCH_RESTORED') and quantity_delta = 0)
   )
 );
 

@@ -1,10 +1,43 @@
 # План реализации MVP «Баночки»
 
-- Статус: Proposed
+- Статус: Active; R1 Local foundation — implemented and verified
 - Дата: 2026-07-19
 - Основание: `PRODUCT_SPEC.md`, `DESIGN.md`
 - Режим планирования: direct; исходный бриф подробный, кодовая база отсутствует.
 - Граница: план заканчивается закрытой beta Release 1 «Вижу и беру»; post-MVP не реализуется, кроме подготовленных расширяемых контрактов.
+
+## Current execution state
+
+- Текущий этап: **R1: Local foundation**.
+- Статус этапа: **DONE по implementation и automated gates**.
+- Evidence date: 2026-07-19.
+- Следующий допустимый этап: **R2: QR workflow**; он не начат.
+
+Текущий пользовательский stage contract имеет приоритет над прежней группировкой full MVP: QR относится к R2, Supabase/family sync — к R3, voice — к R4, recipes/season planning — к R5. Эти функции не реализованы и не показаны как заглушки в R1.
+
+| R1 packet | Фактический статус | Evidence |
+|---|---|---|
+| Checkpoint/toolchain | DONE | Flutter 3.44, Dart 3.12, Android SDK 36, Xcode 26.6; исходно только docs |
+| Flutter bootstrap | DONE | `apps/mobile`, iOS 13+, Android API 24+ |
+| Local identity | DONE | LocalProfile, Family, first FamilyMember, DeviceIdentity |
+| SQLite/migrations | DONE | schema v1 core + v2 indexes/metadata, FK, transactions, reopen tests |
+| Events/projections | DONE | append-only triggers, idempotency, full rebuild, reconciliation |
+| Locations | DONE | create/edit/nesting/move/cycle guard/archive guard/full path |
+| Batch/catalog/history | DONE | create/edit/archive/search/filter/sort/details/actions/history |
+| Large mode | DONE | large home, step-by-step create, large confirmation, shared repository |
+| Automated QA | DONE | analyze 0 issues, 27 tests, iOS+Android integration PASS |
+| Debug builds | DONE | Android APK and iOS Simulator app |
+| Physical accessibility evidence | NOT_RUN | VoiceOver/TalkBack/target-user matrix remains beta evidence |
+
+### R1 architectural decisions
+
+- State: Riverpod only — `docs/adr/0001-state-management-riverpod.md`.
+- Persistence: sqflite, app-private unencrypted R1 DB — `docs/adr/0002-sqlite-sqflite.md`.
+- Event log/projections — `docs/adr/0003-event-log-and-projections.md`.
+- Local identity — `docs/adr/0004-local-only-identity.md`.
+- Platform baseline — `docs/adr/0005-platform-baseline.md`.
+- Reconciliation — `docs/adr/0006-reconciliation.md`.
+- Scope/event vocabulary — `docs/adr/0007-r1-scope-contract.md`.
 
 ## Requirements Summary
 
@@ -158,7 +191,7 @@ docs/
 - No evidence contradicts the party aggregate or event-log model.
 - Large-mode core task success reaches ≥ 85% on the prototype or the flow is revised.
 
-### 1. Bootstrap and quality gates
+### 1. Bootstrap and quality gates — R1 DONE
 
 **Target paths**
 
@@ -181,7 +214,7 @@ docs/
 - `dart format --output=none --set-exit-if-changed .`, `flutter analyze`, `flutter test` pass.
 - A smoke `flutter test integration_test` launches the app on selected targets.
 
-### 2. Local domain, SQLite and projection foundation
+### 2. Local domain, SQLite and projection foundation — R1 functional subset DONE; full-plan encryption/property/crash gates pending
 
 **Target paths**
 
@@ -209,7 +242,7 @@ docs/
 - 100,000 generated event sequences rebuild deterministically.
 - No crash point loses a committed local operation.
 
-### 3. First vertical slice: create, view, take, history
+### 3. First vertical slice: create, view, take, history — R1 functional subset DONE; golden/performance evidence pending
 
 **Target paths**
 
@@ -236,7 +269,7 @@ docs/
 
 - Core slice works without backend and meets local speed targets.
 
-### 4. Locations, catalog and search
+### 4. Locations, catalog and search — R1 functional subset DONE; 5,000-row performance gate pending
 
 **Target paths**
 
