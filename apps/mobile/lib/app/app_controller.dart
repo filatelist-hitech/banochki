@@ -4,6 +4,7 @@ import '../core/database/app_database.dart';
 import '../features/inventory/data/sqlite_inventory_repository.dart';
 import '../features/inventory/domain/inventory_repository.dart';
 import '../features/inventory/domain/models.dart';
+import '../features/qr/domain/qr_models.dart';
 
 final inventoryRepositoryProvider = FutureProvider<InventoryRepository>((
   ref,
@@ -186,6 +187,21 @@ final class AppController extends AsyncNotifier<AppViewState> {
     await (await _repository).rebuildProjections();
     await refresh();
   }
+
+  Future<QrCode> generateQrForBatch(String batchId) async =>
+      (await _repository).generateQrForBatch(batchId);
+
+  Future<QrCode> generateQrForLocation(String locationId) async =>
+      (await _repository).generateQrForStorageLocation(locationId);
+
+  Future<QrCode> generateUnlinkedQr() async =>
+      (await _repository).generateUnlinkedQr();
+
+  Future<QrResolveResult> resolveQr(String payload) async =>
+      (await _repository).resolveQr(payload);
+
+  Future<QrResolveResult> resolveShortCode(String shortCode) async =>
+      (await _repository).resolveShortCode(shortCode);
 
   Future<void> seedDebugData() async {
     await (await _repository).seedDebugData();

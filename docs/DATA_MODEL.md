@@ -1,11 +1,12 @@
 # Модель данных R1
 
-SQLite schema version: **2**.
+SQLite schema version: **3**.
 
 ## Миграции
 
 1. `v1 core schema` — profiles, families, members, device identity, locations, batches, batch photos, inventory events, projections, settings и append-only triggers.
 2. `v2 indexes and metadata` — scoped idempotency unique index, event ordering, catalog/location/tree indexes и `schema_metadata`.
+3. `v3 QR labels` — `qr_codes`, append-only `qr_events`, opaque token/short-code unique indexes и target lookup.
 
 Миграции выполняются последовательно внутри lifecycle `openDatabase`; `PRAGMA foreign_keys = ON` включается до create/upgrade.
 
@@ -24,6 +25,12 @@ SQLite schema version: **2**.
 | `batch_photos` | контракт локального фото; UI R1 показывает заглушку |
 | `app_settings` | theme, large mode, low-stock threshold, seed flag |
 | `schema_metadata` | явная версия схемы |
+| `qr_codes` | stable public token, short code, target, lifecycle и sync-ready actor/device fields |
+| `qr_events` | append-only техническая история QR без token |
+
+## QR R2
+
+QR payload: `banochki://qr/v1/<base64url-random-token>`. В нём нет PII или данных партии. `short_code` имеет вид `XXXXXX-C`, где `C` — Luhn checksum; `(family_id, short_code)` и `public_token` уникальны. Linked targets проверяются в одной SQLite transaction; QR не меняет остаток и не добавляет inventory event.
 
 ## События R1
 

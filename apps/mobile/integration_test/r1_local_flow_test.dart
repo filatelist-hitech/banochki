@@ -5,6 +5,7 @@ import 'package:banochki/features/history/presentation/history_screen.dart';
 import 'package:banochki/features/home/presentation/home_screen.dart';
 import 'package:banochki/features/inventory/data/sqlite_inventory_repository.dart';
 import 'package:banochki/features/inventory/domain/models.dart';
+import 'package:banochki/features/qr/domain/qr_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,6 +78,13 @@ void main() {
         harvestYear: 2026,
       ),
     );
+    final qr = await firstRepository.generateQrForBatch(batch.batch.batchId);
+    expect(qr.payload, startsWith('banochki://qr/v1/'));
+    expect(ShortCode.isValid(qr.shortCode), isTrue);
+    expect(
+      (await firstRepository.resolveQr(qr.payload)).qrCode?.targetId,
+      batch.batch.batchId,
+    );
     await firstRepository.recordEvent(
       batchId: batch.batch.batchId,
       type: InventoryEventType.jarsTaken,
@@ -144,6 +152,10 @@ void main() {
     final snapshot = await reopenedRepository.loadSnapshot();
     expect(snapshot.batches.single.projection.computedQuantity, 16);
     expect(snapshot.history, hasLength(4));
+    expect(
+      (await reopenedRepository.resolveShortCode(qr.shortCode)).kind,
+      QrResolutionKind.resolved,
+    );
 
     await tester.pumpWidget(const SizedBox.shrink());
     await reopenedRepository.close();

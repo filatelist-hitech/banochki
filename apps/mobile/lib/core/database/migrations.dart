@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 
-const databaseSchemaVersion = 2;
+const databaseSchemaVersion = 3;
 
 Future<void> applyMigration(DatabaseExecutor db, int version) async {
   switch (version) {
@@ -8,9 +8,71 @@ Future<void> applyMigration(DatabaseExecutor db, int version) async {
       await _createCoreSchema(db);
     case 2:
       await _createIndexesAndMetadata(db);
+    case 3:
+      await _createQrSchema(db);
     default:
       throw StateError('Неизвестная миграция базы: $version');
   }
+}
+
+Future<void> _createQrSchema(DatabaseExecutor db) async {
+  await db.execute('''
+    CREATE TABLE qr_codes (
+      id TEXT PRIMARY KEY,
+      family_id TEXT NOT NULL REFERENCES families(family_id) ON DELETE RESTRICT,
+      public_token TEXT NOT NULL,
+      short_code TEXT NOT NULL,
+      checksum TEXT NOT NULL,
+      protocol_version INTEGER NOT NULL CHECK(protocol_version = 1),
+      target_type TEXT NOT NULL CHECK(target_type IN ('batch', 'storage_location', 'unlinked')),
+      target_id TEXT,
+      state TEXT NOT NULL CHECK(state IN ('unlinked', 'active', 'revoked', 'replaced')),
+      created_at TEXT NOT NULL,
+      linked_at TEXT,
+      revoked_at TEXT,
+      replaced_by_qr_id TEXT REFERENCES qr_codes(id) ON DELETE RESTRICT,
+      created_by_member_id TEXT NOT NULL REFERENCES family_members(member_id) ON DELETE RESTRICT,
+      device_id TEXT NOT NULL REFERENCES device_identities(device_id) ON DELETE RESTRICT,
+      CHECK((target_type = 'unlinked' AND target_id IS NULL AND state = 'unlinked') OR
+            (target_type IN ('batch', 'storage_location') AND target_id IS NOT NULL))
+    )
+  ''');
+  await db.execute('''
+    CREATE UNIQUE INDEX qr_codes_public_token_uq ON qr_codes(public_token)
+  ''');
+  await db.execute('''
+    CREATE UNIQUE INDEX qr_codes_family_short_code_uq ON qr_codes(family_id, short_code)
+  ''');
+  await db.execute('''
+    CREATE INDEX qr_codes_target_idx ON qr_codes(family_id, target_type, target_id, state)
+  ''');
+  await db.execute('''
+    CREATE TABLE qr_events (
+      event_id TEXT PRIMARY KEY,
+      family_id TEXT NOT NULL REFERENCES families(family_id) ON DELETE RESTRICT,
+      qr_id TEXT NOT NULL REFERENCES qr_codes(id) ON DELETE RESTRICT,
+      event_type TEXT NOT NULL CHECK(event_type IN ('QR_CREATED', 'QR_LINKED', 'QR_REVOKED', 'QR_REPLACED')),
+      target_type TEXT NOT NULL,
+      target_id TEXT,
+      created_by_member_id TEXT NOT NULL REFERENCES family_members(member_id) ON DELETE RESTRICT,
+      device_id TEXT NOT NULL REFERENCES device_identities(device_id) ON DELETE RESTRICT,
+      created_at TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TRIGGER qr_events_no_update BEFORE UPDATE ON qr_events
+    BEGIN SELECT RAISE(ABORT, 'qr_events are append-only'); END
+  ''');
+  await db.execute('''
+    CREATE TRIGGER qr_events_no_delete BEFORE DELETE ON qr_events
+    BEGIN SELECT RAISE(ABORT, 'qr_events are append-only'); END
+  ''');
+  await db.update(
+    'schema_metadata',
+    <String, Object?>{'value': '$databaseSchemaVersion'},
+    where: 'key = ?',
+    whereArgs: ['schema_version'],
+  );
 }
 
 Future<void> _createCoreSchema(DatabaseExecutor db) async {

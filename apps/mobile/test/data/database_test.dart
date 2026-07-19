@@ -50,7 +50,7 @@ void main() {
         final db = await database.open();
         expect(
           Sqflite.firstIntValue(await db.rawQuery('PRAGMA user_version')),
-          2,
+          3,
         );
         expect(
           Sqflite.firstIntValue(await db.rawQuery('PRAGMA foreign_keys')),
@@ -61,7 +61,7 @@ void main() {
           where: 'key = ?',
           whereArgs: ['schema_version'],
         );
-        expect(metadata.single['value'], '2');
+        expect(metadata.single['value'], '3');
         final indexes = (await db.rawQuery(
           "SELECT name FROM sqlite_master WHERE type = 'index'",
         )).map((row) => row['name']).toSet();
@@ -72,7 +72,7 @@ void main() {
       },
     );
 
-    test('upgrades a v1 fixture to v2', () async {
+    test('upgrades a v1 fixture to v3', () async {
       final v1 = await databaseFactoryFfi.openDatabase(
         databasePath,
         options: OpenDatabaseOptions(
@@ -86,7 +86,7 @@ void main() {
       final upgraded = await database.open();
       expect(
         Sqflite.firstIntValue(await upgraded.rawQuery('PRAGMA user_version')),
-        2,
+        3,
       );
       expect(await upgraded.query('schema_metadata'), isNotEmpty);
     });

@@ -9,7 +9,9 @@ import '../../inventory/domain/models.dart';
 import 'batch_confirmation_screen.dart';
 
 final class AddBatchScreen extends ConsumerStatefulWidget {
-  const AddBatchScreen({super.key});
+  const AddBatchScreen({this.initialLocationId, super.key});
+
+  final String? initialLocationId;
 
   @override
   ConsumerState<AddBatchScreen> createState() => _AddBatchScreenState();
@@ -55,7 +57,8 @@ final class _AddBatchScreenState extends ConsumerState<AddBatchScreen> {
     final locations = state.snapshot.locations
         .where((item) => !item.isArchived)
         .toList();
-    _locationId ??= locations.firstOrNull?.locationId;
+    _locationId ??=
+        widget.initialLocationId ?? locations.firstOrNull?.locationId;
     return Scaffold(
       appBar: AppBar(title: const Text('Новая партия')),
       body: SafeArea(

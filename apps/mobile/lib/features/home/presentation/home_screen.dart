@@ -8,6 +8,7 @@ import '../../batches/presentation/add_batch_screen.dart';
 import '../../batches/presentation/batch_details_screen.dart';
 import '../../inventory/domain/models.dart';
 import '../../locations/presentation/location_form_screen.dart';
+import '../../qr/presentation/qr_scanner_screen.dart';
 
 final class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -42,6 +43,15 @@ final class HomeScreen extends ConsumerWidget {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const QrScannerScreen()),
+            ),
+            icon: const Icon(Icons.qr_code_scanner),
+            tooltip: 'Сканировать QR',
+          ),
+        ],
       ),
       floatingActionButton: snapshot.locations.any((item) => !item.isArchived)
           ? FloatingActionButton.extended(

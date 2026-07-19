@@ -10,6 +10,7 @@ import '../../inventory/domain/models.dart';
 import '../../inventory/presentation/inventory_dialogs.dart';
 import '../../inventory/presentation/reconcile_screen.dart';
 import 'edit_batch_screen.dart';
+import '../../qr/presentation/qr_label_screen.dart';
 
 final class BatchDetailsScreen extends ConsumerWidget {
   const BatchDetailsScreen({required this.batchId, super.key});
@@ -231,6 +232,27 @@ final class BatchDetailsScreen extends ConsumerWidget {
                       onPressed: () => _openHistory(context),
                       icon: const Icon(Icons.history),
                       label: const Text('История партии'),
+                    ),
+                    const SizedBox(height: BanochkiSpacing.sm),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final qr = await ref
+                            .read(appControllerProvider.notifier)
+                            .generateQrForBatch(batchId);
+                        if (!context.mounted) return;
+                        await Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => QrLabelScreen(
+                              qr: qr,
+                              title: view.batch.name,
+                              subtitle:
+                                  '${view.batch.harvestYear ?? 'Год не указан'} · ${_volume(view.batch.jarVolumeMl)}',
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.qr_code_2),
+                      label: const Text('Показать QR'),
                     ),
                   ],
                 ),
