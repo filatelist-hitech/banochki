@@ -1,6 +1,6 @@
 # Модель данных R1/R2
 
-SQLite schema version: **4**.
+SQLite schema version: **5**.
 
 ## Миграции
 
@@ -8,6 +8,7 @@ SQLite schema version: **4**.
 2. `v2 indexes and metadata` — scoped idempotency unique index, event ordering, catalog/location/tree indexes и `schema_metadata`.
 3. `v3 QR labels` — `qr_codes`, append-only `qr_events`, opaque token/short-code unique indexes и target lookup.
 4. `v4 quantity units` — `batches.quantity_unit`; существующие партии получают `шт.`, `мл` или `г` по встроенной категории.
+5. `v5 sync transport state` — outbox, cursor, failures/conflicts и remote versions; trigger ставит новый inventory event в outbox в той же transaction.
 
 Миграции выполняются последовательно внутри lifecycle `openDatabase`; `PRAGMA foreign_keys = ON` включается до create/upgrade.
 

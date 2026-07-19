@@ -1,6 +1,6 @@
 # Запуск проекта «Баночки»
 
-Этот гайд проводит от чистого checkout до работающего приложения на iOS Simulator или Android Emulator. R1/R2 полностью локальны: backend, API-ключи, `.env` и интернет после установки зависимостей не нужны.
+Этот гайд проводит от чистого checkout до работающего приложения на iOS Simulator или Android Emulator. Обычная сборка R1/R2 полностью локальна: backend, API-ключи, `.env` и интернет после установки зависимостей не нужны. R3 добавляет отдельный developer-only Supabase контур; Flutter transport к нему пока не подключён.
 
 ## 1. Требования
 
@@ -190,7 +190,50 @@ flutter build ios --simulator --debug
 
 Команда iOS работает только на macOS с настроенным Xcode.
 
-## 8. Где хранятся данные
+## 8. Локальная база Supabase для R3
+
+Нужна только для разработки server schema/RLS и будущего sync transport. Для обычного запуска приложения этот раздел пропустите.
+
+### Предусловия
+
+- Docker Desktop или совместимый Docker API запущен;
+- установлен Supabase CLI (`supabase --version` должен вывести версию);
+- из корня репозитория, а не из `apps/mobile`.
+
+### Первый запуск
+
+```bash
+cp .env.example .env
+supabase start
+supabase status
+```
+
+CLI выведет локальные URL и ключи. В `.env` разрешён только public `SUPABASE_ANON_KEY`; `service_role` нельзя копировать во Flutter, логи или Git. Файл `.env` уже исключён из репозитория.
+
+### Проверка migrations и RLS
+
+```bash
+# только локальная база: пересоздать и применить все migrations
+supabase db reset
+
+# выполнить pgTAP database tests
+supabase test db
+
+# после ручного SQL-эксперимента проверить schema drift
+supabase db diff --schema public
+```
+
+Если `supabase: command not found`, установите актуальный CLI по официальной инструкции, затем повторите команды. Не заменяйте его случайным SQL-клиентом: локальный Auth/Storage/RLS stack должен соответствовать Supabase.
+
+### Что можно проверить уже сейчас
+
+1. `supabase db reset` применяет `supabase/migrations/20260719090000_r3_family_sync.sql` с чистой базы.
+2. `supabase test db` запускает schema/RLS smoke suite из `supabase/tests/database`.
+3. В Studio можно увидеть private bucket `batch-photos`, но не надо загружать реальные семейные фото в dev stack.
+
+Не используйте `supabase db reset --linked`: это удаляет данные подключённого удалённого окружения. Для текущей R3-фазы не нужен ни production project, ни `supabase link`.
+
+## 9. Где хранятся данные
 
 Приложение использует SQLite через `sqflite`. Файл базы находится в app-private storage выбранного устройства или симулятора. Пользовательские действия пишутся как append-only события, а текущие остатки и карточки восстанавливаются как projections.
 
@@ -200,7 +243,7 @@ flutter build ios --simulator --debug
 
 Для проверки на чистой базе безопаснее создать новый simulator/emulator или удалить приложение только после осознанного подтверждения, что локальные данные не нужны.
 
-## 9. Частые проблемы
+## 10. Частые проблемы
 
 ### `flutter devices` не показывает устройство
 

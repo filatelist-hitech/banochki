@@ -1,2 +1,4 @@
 .DS_Store
+.env
 apps/mobile/android/build/
+supabase/.temp/

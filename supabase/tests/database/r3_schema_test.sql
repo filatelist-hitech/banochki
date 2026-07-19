@@ -1,0 +1,12 @@
+begin;
+select plan(8);
+select has_table('public', 'families', 'families exist');
+select has_table('public', 'family_invites', 'invites exist');
+select has_table('public', 'sync_changes', 'monotonic change feed exists');
+select has_table('public', 'sync_receipts', 'idempotency receipts exist');
+select has_column('public', 'inventory_events', 'idempotency_key', 'event idempotency is server enforced');
+select policy_exists('public', 'batches', 'batches_read');
+select policy_exists('public', 'inventory_events', 'events_insert');
+select policy_exists('storage', 'objects', 'photos_storage_write');
+select * from finish();
+rollback;

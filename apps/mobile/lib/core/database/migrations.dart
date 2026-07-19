@@ -1,6 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 
-const databaseSchemaVersion = 4;
+const databaseSchemaVersion = 5;
 
 Future<void> applyMigration(DatabaseExecutor db, int version) async {
   switch (version) {
@@ -12,9 +12,96 @@ Future<void> applyMigration(DatabaseExecutor db, int version) async {
       await _createQrSchema(db);
     case 4:
       await _addQuantityUnits(db);
+    case 5:
+      await _createSyncSchema(db);
     default:
       throw StateError('Неизвестная миграция базы: $version');
   }
+}
+
+/// R3 keeps transport state separate from domain state. A local write is valid
+/// before it reaches Supabase; the outbox merely records work still to send.
+Future<void> _createSyncSchema(DatabaseExecutor db) async {
+  await db.execute('''
+    CREATE TABLE sync_outbox (
+      operation_id TEXT PRIMARY KEY,
+      idempotency_key TEXT NOT NULL UNIQUE,
+      family_id TEXT NOT NULL REFERENCES families(family_id) ON DELETE RESTRICT,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      operation_type TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      attempt_count INTEGER NOT NULL DEFAULT 0 CHECK(attempt_count >= 0),
+      next_retry_at TEXT,
+      last_error TEXT,
+      state TEXT NOT NULL DEFAULT 'pending'
+        CHECK(state IN ('pending','sending','acknowledged','retry_wait','blocked','failed_permanently'))
+    )
+  ''');
+  await db.execute('''
+    CREATE INDEX sync_outbox_ready_idx
+    ON sync_outbox(state, next_retry_at, created_at)
+  ''');
+  await db.execute('''
+    CREATE TABLE sync_cursors (
+      family_id TEXT PRIMARY KEY REFERENCES families(family_id) ON DELETE RESTRICT,
+      server_sequence INTEGER NOT NULL DEFAULT 0 CHECK(server_sequence >= 0),
+      updated_at TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE sync_failures (
+      id TEXT PRIMARY KEY,
+      operation_id TEXT REFERENCES sync_outbox(operation_id) ON DELETE RESTRICT,
+      message TEXT NOT NULL,
+      is_permanent INTEGER NOT NULL CHECK(is_permanent IN (0, 1)),
+      created_at TEXT NOT NULL
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE sync_conflicts (
+      conflict_id TEXT PRIMARY KEY,
+      family_id TEXT NOT NULL REFERENCES families(family_id) ON DELETE RESTRICT,
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      local_payload_json TEXT NOT NULL,
+      remote_payload_json TEXT NOT NULL,
+      state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','resolved')),
+      created_at TEXT NOT NULL,
+      resolved_at TEXT
+    )
+  ''');
+  await db.execute('''
+    CREATE TABLE remote_entity_versions (
+      entity_type TEXT NOT NULL,
+      entity_id TEXT NOT NULL,
+      version INTEGER NOT NULL CHECK(version >= 0),
+      server_sequence INTEGER NOT NULL CHECK(server_sequence >= 0),
+      PRIMARY KEY(entity_type, entity_id)
+    )
+  ''');
+  // Events are the R3 synchronization unit. This trigger runs in the same
+  // transaction as the domain write, so a visible local event can never miss
+  // its outbox record. Existing R1/R2 history is queued by family onboarding.
+  await db.execute('''
+    CREATE TRIGGER inventory_events_enqueue_sync AFTER INSERT ON inventory_events
+    BEGIN
+      INSERT OR IGNORE INTO sync_outbox(
+        operation_id, idempotency_key, family_id, entity_type, entity_id,
+        operation_type, payload_json, created_at, state
+      ) VALUES (
+        NEW.event_id, NEW.idempotency_key, NEW.family_id, 'inventory_event', NEW.event_id,
+        'append', NEW.payload_json, NEW.created_at, 'pending'
+      );
+    END
+  ''');
+  await db.update(
+    'schema_metadata',
+    <String, Object?>{'value': '$databaseSchemaVersion'},
+    where: 'key = ?',
+    whereArgs: ['schema_version'],
+  );
 }
 
 Future<void> _createQrSchema(DatabaseExecutor db) async {

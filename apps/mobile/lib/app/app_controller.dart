@@ -1,6 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/database/app_database.dart';
+import '../core/sync/supabase_config.dart';
+import '../core/sync/sync_repository.dart';
+import '../core/sync/sync_transport.dart';
 import '../features/inventory/data/sqlite_inventory_repository.dart';
 import '../features/inventory/domain/inventory_repository.dart';
 import '../features/inventory/domain/models.dart';
@@ -12,6 +16,17 @@ final inventoryRepositoryProvider = FutureProvider<InventoryRepository>((
   final database = await AppDatabase.production();
   final repository = SqliteInventoryRepository(database: database);
   ref.onDispose(repository.close);
+  return repository;
+});
+
+final syncRepositoryProvider = FutureProvider<SyncRepository?>((ref) async {
+  if (!SupabaseConfig.isConfigured) return null;
+  final database = await AppDatabase.production();
+  final repository = SyncRepository(
+    database: database,
+    transport: SupabaseRpcTransport(Supabase.instance.client),
+  );
+  ref.onDispose(repository.dispose);
   return repository;
 });
 
@@ -44,6 +59,8 @@ final class AppController extends AsyncNotifier<AppViewState> {
   @override
   Future<AppViewState> build() async {
     final repository = await ref.watch(inventoryRepositoryProvider.future);
+    // Startup binding is application-layer work, never a widget-side request.
+    await (await ref.watch(syncRepositoryProvider.future))?.reconnect();
     final snapshot = await repository.loadSnapshot();
     final query = const CatalogQuery();
     final catalog = await repository.searchCatalog(query);
@@ -208,6 +225,13 @@ final class AppController extends AsyncNotifier<AppViewState> {
   Future<void> rebuildProjections() async {
     await (await _repository).rebuildProjections();
     await refresh();
+  }
+
+  Future<SyncDiagnostics?> syncDiagnostics() async =>
+      (await ref.read(syncRepositoryProvider.future))?.diagnostics();
+
+  Future<void> reconnectSync() async {
+    await (await ref.read(syncRepositoryProvider.future))?.reconnect();
   }
 
   Future<QrCode> generateQrForBatch(String batchId) async =>

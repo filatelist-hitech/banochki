@@ -1,8 +1,8 @@
-# Архитектура R1/R2 + локальные фото
+# Архитектура R1/R2 + R3 family sync
 
 ## Граница этапа
 
-R2 расширяет offline vertical slice QR-этикетками. Supabase, sync queue, voice и recipes по-прежнему не реализованы.
+R2 расширяет offline vertical slice QR-этикетками. R3 добавляет local-first outbox/cursor контракт и Supabase schema/RLS; UI по-прежнему читает SQLite, а не удалённую БД.
 
 ## Направление зависимостей
 
@@ -59,3 +59,7 @@ Riverpod 3 используется как единственная систем
 Будущая синхронизация должна подключаться за repository boundary и принимать локальный event log как исходящий поток. Нельзя добавлять прямые сетевые вызовы в UI или превращать server projection в единственный источник остатка.
 
 QR token и short code уже содержат device/member provenance и стабильны для R3; они не зависят от часов устройства и не попадают в inventory analytics/logging. R3 должен синхронизировать lifecycle QR записи, а не выпускать новые token при обычном edit партии.
+
+## R3 sync
+
+SQLite v5 добавляет `sync_outbox`, `sync_cursors`, `sync_failures`, `sync_conflicts`, `remote_entity_versions`. Insert inventory event в той же local transaction создаёт outbox operation через trigger. Серверный `sync_changes.server_sequence` — единственный pull cursor; Realtime является notification-only. Полный контракт, RLS и production limits: `docs/R3_FAMILY_SYNC.md`.
