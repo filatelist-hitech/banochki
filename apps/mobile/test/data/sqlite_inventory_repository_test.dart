@@ -237,6 +237,7 @@ void main() {
         batchId: batchId,
         name: 'Огурцы с укропом',
         category: 'Овощи',
+        quantityUnit: 'шт.',
         jarVolumeMl: 700,
       );
       final snapshot = await repository.loadSnapshot();
@@ -245,6 +246,25 @@ void main() {
         snapshot.history.first.eventType,
         InventoryEventType.batchMetadataUpdated,
       );
+    });
+
+    test('photos stay attached to their batch and can be removed', () async {
+      final batchId = harness.batch!.batch.batchId;
+      final photo = await harness.repository.addBatchPhoto(
+        batchId: batchId,
+        localPath: '/private/photos/ogurcy.jpg',
+      );
+      final attached = await harness.repository.listBatchPhotos(batchId);
+      expect(attached, hasLength(1));
+      expect(attached.single.photoId, photo.photoId);
+      expect(attached.single.localPath, photo.localPath);
+      expect(
+        (await harness.repository.loadSnapshot()).batches.single.photoPath,
+        photo.localPath,
+      );
+
+      await harness.repository.deleteBatchPhoto(photo.photoId);
+      expect(await harness.repository.listBatchPhotos(batchId), isEmpty);
     });
   });
 }

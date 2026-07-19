@@ -1,4 +1,4 @@
-# Accessibility R1
+# Accessibility R1/R2
 
 Baseline: WCAG 2.2 AA + platform semantics.
 
@@ -15,6 +15,8 @@ Baseline: WCAG 2.2 AA + platform semantics.
 - light/dark/system themes используют semantic tokens;
 - adaptive navigation поддерживает телефон и планшет;
 - каждое изменение получает крупное текстовое подтверждение и явное исправление.
+- QR scanner имеет крупную рамку, подписанные «Фонарик», «Ввести номер» и «Закрыть»; короткий номер — полноценный путь без камеры.
+- QR label имеет text alternative с коротким номером, чёрно-белый контраст и quiet zone; PDF не печатает остаток.
 
 ## Автоматически проверено
 
@@ -24,6 +26,8 @@ Baseline: WCAG 2.2 AA + platform semantics.
 - Flutter guidelines для Android tap targets, labeled targets и text contrast на large home;
 - `needs_reconciliation` отображается текстом без отрицательного display quantity;
 - large home и confirmation actions присутствуют.
+- карточки каталога имеют запас по высоте для превью и двухстрочного названия; переполнение `RenderFlex` не допускается.
+- фото партии перелистываются горизонтальным жестом и показывают текстовый счётчик текущего снимка.
 
 ## Не проверено физически
 
@@ -32,5 +36,7 @@ Baseline: WCAG 2.2 AA + platform semantics.
 - Switch Access / external keyboard: `NOT_RUN`;
 - пять целевых пользователей и ≥85% task success: `NOT_RUN`;
 - инструментальный scanner контраста всей матрицы экранов/состояний: `NOT_RUN` (large home automated guideline — PASS).
+- physical iPhone QR scan и ручной short-code search: `PASS` (пользовательская проверка, 2026-07-19).
+- flashlight, paper scan, PDF system preview/share и VoiceOver/TalkBack: `NOT_RUN` до отдельной ручной matrix.
 
 Эти пункты нельзя считать PASS по результатам widget tests; они остаются release evidence перед beta.

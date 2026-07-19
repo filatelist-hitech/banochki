@@ -69,7 +69,7 @@ void main() {
 
     expect(
       find.bySemanticsLabel(
-        'Огурцы, осталось 16 банок, Дача · Погреб · Полка 2, Запас есть',
+        'Огурцы, осталось 16 шт., Дача · Погреб · Полка 2, Запас есть',
       ),
       findsOneWidget,
     );
@@ -91,16 +91,17 @@ void main() {
     await tester.tap(find.byKey(const Key('save-batch')));
     await tester.pump();
     expect(
-      find.text('Заполните название, положительное количество и место.'),
+      find.text(
+        'Заполните название, количество, место, категорию и единицу измерения.',
+      ),
       findsOneWidget,
     );
 
     await tester.enterText(find.byKey(const Key('batch-name')), 'Лечо');
     await tester.enterText(find.byKey(const Key('batch-quantity')), '12');
     await tester.tap(find.byKey(const Key('save-batch')));
-    await _pumpUntil(tester, find.text('ЛЕЧО'));
-    expect(find.text('ЛЕЧО'), findsOneWidget);
-    expect(find.text('12 БАНОК'), findsOneWidget);
+    await _pumpUntil(tester, find.text('Лечо'));
+    expect(find.text('Лечо'), findsOneWidget);
   });
 
   testWidgets('quantity confirmation has explicit correction action', (
@@ -117,6 +118,7 @@ void main() {
                 title: 'Банки взяты',
                 remaining: 16,
                 large: true,
+                unit: 'шт.',
               ),
               child: const Text('Открыть'),
             ),

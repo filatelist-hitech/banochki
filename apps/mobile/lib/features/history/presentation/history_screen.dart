@@ -132,5 +132,5 @@ IconData _eventIcon(InventoryEventType type) => switch (type) {
 };
 
 String _date(DateTime date) =>
-    '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} '
-    '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    '${date.toLocal().day.toString().padLeft(2, '0')}.${date.toLocal().month.toString().padLeft(2, '0')}.${date.toLocal().year} '
+    '${date.toLocal().hour.toString().padLeft(2, '0')}:${date.toLocal().minute.toString().padLeft(2, '0')}';

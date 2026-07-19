@@ -1,4 +1,4 @@
-# Проверки R1
+# Проверки R1/R2
 
 ## Команды
 
@@ -18,9 +18,10 @@ flutter build ios --simulator --debug
 
 - unit: reducer/status/search normalization;
 - repository: quantity events, ordering, idempotency, rebuild, reconciliation, move, cycle, archive/restore, validation, search/filter, metadata event;
-- database: fresh create, v1→v2 migration, foreign keys, indexes, atomic create, reopen persistence, duplicate ids/keys, append-only triggers;
+- database: fresh create, v1→v4 migration, foreign keys, indexes, atomic create, reopen persistence, duplicate ids/keys, append-only triggers, фото и единицы партии;
 - widget: empty catalog, card, add/validation/confirmation, large mode, 200% text, semantics, `needs_reconciliation`;
-- integration: clean onboarding → location tree → batch 18 → take 2 → return 1 → spoil 1 → remaining 16 → four events → repository restart → same data/history.
+- integration: clean onboarding → location tree → batch 18 → QR batch label → inventory events → restart → short-code resolve → same data/history.
+- QR unit/repository: opaque payload parser/version, Luhn checksum, stable batch label, unlinked→linked transaction, revoked/replaced resolution, scanner state mapping, vector A4 PDF for all templates and separation from inventory events.
 
 ## Последний фактический прогон — 2026-07-19
 
@@ -29,7 +30,7 @@ flutter build ios --simulator --debug
 | `flutter pub get` | PASS |
 | `dart format` | PASS |
 | `flutter analyze` | PASS, 0 issues |
-| `flutter test` | PASS, 27 tests |
+| `flutter test` | PASS, 36 tests |
 | integration, iPhone 17 simulator / iOS 26.5 | PASS |
 | integration, Pixel 7 emulator / Android 35 | PASS |
 | `flutter build apk --debug` | PASS |
@@ -37,3 +38,16 @@ flutter build ios --simulator --debug
 | physical iOS build/run | NOT_RUN |
 | physical Android build/run | NOT_RUN |
 | manual VoiceOver/TalkBack | NOT_RUN |
+
+## R2 checkpoint
+
+| Gate | Результат |
+|---|---|
+| `flutter pub get` | PASS |
+| `dart format --set-exit-if-changed .` | PASS |
+| `flutter analyze` | PASS, 0 issues |
+| `flutter test` | PASS, 35 tests |
+| R2 manual physical iPhone | PASS (user-verified): QR scan, manual short-code search and QR resolution |
+| `flutter build apk --debug` | PASS, includes local PDF fonts and QR scanner |
+| `flutter build ios --simulator --debug` | PASS, Xcode build done |
+| physical Android / flashlight / paper scan / PDF preview-share / VoiceOver-TalkBack | NOT_RUN |

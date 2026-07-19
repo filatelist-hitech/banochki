@@ -5,6 +5,7 @@ abstract final class BanochkiColors {
   static const surface = Color(0xFFFFFFFF);
   static const ink = Color(0xFF241B16);
   static const mutedInk = Color(0xFF63564E);
+  static const outline = Color(0xFF8D7B71);
   static const primary = Color(0xFF943F27);
   static const support = Color(0xFF3F6A52);
   static const attention = Color(0xFF8A4B08);
@@ -26,7 +27,7 @@ abstract final class BanochkiRadius {
 }
 
 abstract final class BanochkiTargets {
-  static const standard = 52.0;
+  static const standard = 56.0;
   static const large = 64.0;
 }
 
@@ -65,22 +66,40 @@ ThemeData banochkiDarkTheme() {
 ThemeData _baseTheme(ColorScheme scheme) => ThemeData(
   useMaterial3: true,
   colorScheme: scheme,
+  fontFamily: 'Roboto',
   textTheme: Typography.material2021().black.apply(
+    fontFamily: 'Roboto',
     bodyColor: scheme.onSurface,
     displayColor: scheme.onSurface,
   ),
   cardTheme: CardThemeData(
+    color: BanochkiColors.surface,
     elevation: 0,
     margin: EdgeInsets.zero,
     shape: RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(BanochkiRadius.card),
-      side: BorderSide(color: scheme.outlineVariant),
+      side: const BorderSide(color: BanochkiColors.outline),
     ),
   ),
   inputDecorationTheme: InputDecorationTheme(
     filled: true,
+    fillColor: BanochkiColors.surface,
+    contentPadding: const EdgeInsets.symmetric(
+      horizontal: BanochkiSpacing.md,
+      vertical: BanochkiSpacing.md,
+    ),
+    labelStyle: const TextStyle(color: BanochkiColors.mutedInk),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(BanochkiRadius.control),
+      borderSide: const BorderSide(color: BanochkiColors.outline),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(BanochkiRadius.control),
+      borderSide: const BorderSide(color: BanochkiColors.outline),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(BanochkiRadius.control),
+      borderSide: const BorderSide(color: BanochkiColors.primary, width: 2),
     ),
   ),
   elevatedButtonTheme: ElevatedButtonThemeData(
@@ -92,6 +111,17 @@ ThemeData _baseTheme(ColorScheme scheme) => ThemeData(
       textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
     ),
   ),
+  filledButtonTheme: FilledButtonThemeData(
+    style: FilledButton.styleFrom(
+      minimumSize: const Size(48, BanochkiTargets.standard),
+      backgroundColor: BanochkiColors.primary,
+      foregroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(BanochkiRadius.card),
+      ),
+      textStyle: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+    ),
+  ),
   outlinedButtonTheme: OutlinedButtonThemeData(
     style: OutlinedButton.styleFrom(
       minimumSize: const Size(48, BanochkiTargets.standard),
@@ -99,6 +129,40 @@ ThemeData _baseTheme(ColorScheme scheme) => ThemeData(
         borderRadius: BorderRadius.circular(BanochkiRadius.control),
       ),
       textStyle: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+    ),
+  ),
+  appBarTheme: AppBarTheme(
+    backgroundColor: Colors.transparent,
+    foregroundColor: scheme.onSurface,
+    elevation: 0,
+    scrolledUnderElevation: 0,
+    titleTextStyle: TextStyle(
+      color: scheme.onSurface,
+      fontSize: 30,
+      fontWeight: FontWeight.w800,
+      letterSpacing: -0.7,
+    ),
+  ),
+  navigationBarTheme: NavigationBarThemeData(
+    height: 76,
+    backgroundColor: scheme.surface,
+    indicatorColor: Colors.transparent,
+    iconTheme: WidgetStateProperty.resolveWith(
+      (states) => IconThemeData(
+        color: states.contains(WidgetState.selected)
+            ? BanochkiColors.primary
+            : scheme.onSurfaceVariant,
+      ),
+    ),
+    labelTextStyle: WidgetStateProperty.resolveWith(
+      (states) => TextStyle(
+        color: states.contains(WidgetState.selected)
+            ? BanochkiColors.primary
+            : scheme.onSurfaceVariant,
+        fontWeight: states.contains(WidgetState.selected)
+            ? FontWeight.w700
+            : FontWeight.w500,
+      ),
     ),
   ),
 );

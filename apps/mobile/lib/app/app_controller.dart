@@ -4,6 +4,7 @@ import '../core/database/app_database.dart';
 import '../features/inventory/data/sqlite_inventory_repository.dart';
 import '../features/inventory/domain/inventory_repository.dart';
 import '../features/inventory/domain/models.dart';
+import '../features/qr/domain/qr_models.dart';
 
 final inventoryRepositoryProvider = FutureProvider<InventoryRepository>((
   ref,
@@ -111,10 +112,31 @@ final class AppController extends AsyncNotifier<AppViewState> {
     return result;
   }
 
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId) async =>
+      (await _repository).listBatchPhotos(batchId);
+
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  }) async {
+    final photo = await (await _repository).addBatchPhoto(
+      batchId: batchId,
+      localPath: localPath,
+    );
+    await refresh();
+    return photo;
+  }
+
+  Future<void> deleteBatchPhoto(String photoId) async {
+    await (await _repository).deleteBatchPhoto(photoId);
+    await refresh();
+  }
+
   Future<void> updateBatchMetadata({
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,
@@ -127,6 +149,7 @@ final class AppController extends AsyncNotifier<AppViewState> {
       batchId: batchId,
       name: name,
       category: category,
+      quantityUnit: quantityUnit,
       jarVolumeMl: jarVolumeMl,
       preservedAt: preservedAt,
       harvestYear: harvestYear,
@@ -185,6 +208,45 @@ final class AppController extends AsyncNotifier<AppViewState> {
   Future<void> rebuildProjections() async {
     await (await _repository).rebuildProjections();
     await refresh();
+  }
+
+  Future<QrCode> generateQrForBatch(String batchId) async =>
+      (await _repository).generateQrForBatch(batchId);
+
+  Future<QrCode> generateQrForLocation(String locationId) async =>
+      (await _repository).generateQrForStorageLocation(locationId);
+
+  Future<QrCode> generateUnlinkedQr() async =>
+      (await _repository).generateUnlinkedQr();
+
+  Future<QrResolveResult> resolveQr(String payload) async =>
+      (await _repository).resolveQr(payload);
+
+  Future<QrResolveResult> resolveShortCode(String shortCode) async =>
+      (await _repository).resolveShortCode(shortCode);
+
+  Future<QrCode> linkQrToBatch({
+    required String qrId,
+    required String batchId,
+  }) async {
+    final result = await (await _repository).linkQrToBatch(
+      qrId: qrId,
+      batchId: batchId,
+    );
+    await refresh();
+    return result;
+  }
+
+  Future<QrCode> linkQrToLocation({
+    required String qrId,
+    required String locationId,
+  }) async {
+    final result = await (await _repository).linkQrToStorageLocation(
+      qrId: qrId,
+      locationId: locationId,
+    );
+    await refresh();
+    return result;
   }
 
   Future<void> seedDebugData() async {

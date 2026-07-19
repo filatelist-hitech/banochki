@@ -150,6 +150,7 @@ final class Batch {
     required this.name,
     required this.category,
     required this.initialQuantity,
+    this.quantityUnit = 'шт.',
     required this.authorMemberId,
     required this.storageLocationId,
     required this.createdAt,
@@ -169,6 +170,7 @@ final class Batch {
   final String name;
   final String category;
   final int initialQuantity;
+  final String quantityUnit;
   final int? jarVolumeMl;
   final DateTime? preservedAt;
   final int? harvestYear;
@@ -291,12 +293,14 @@ final class BatchView {
     required this.projection,
     required this.locationPath,
     required this.status,
+    this.photoPath,
   });
 
   final Batch batch;
   final InventoryProjection projection;
   final String locationPath;
   final BatchStatus status;
+  final String? photoPath;
 }
 
 final class CatalogQuery {
@@ -349,6 +353,7 @@ final class CreateBatchInput {
     required this.initialQuantity,
     required this.storageLocationId,
     this.category = 'Другое',
+    this.quantityUnit = 'шт.',
     this.jarVolumeMl,
     this.preservedAt,
     this.harvestYear,
@@ -363,6 +368,7 @@ final class CreateBatchInput {
   final int initialQuantity;
   final String storageLocationId;
   final String category;
+  final String quantityUnit;
   final int? jarVolumeMl;
   final DateTime? preservedAt;
   final int? harvestYear;

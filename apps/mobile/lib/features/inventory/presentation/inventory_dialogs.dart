@@ -6,6 +6,7 @@ import '../../../core/ui/banochki_theme.dart';
 Future<int?> showQuantityDialog(
   BuildContext context, {
   required String title,
+  required String unit,
   int initial = 1,
   bool large = false,
 }) async {
@@ -29,7 +30,10 @@ Future<int?> showQuantityDialog(
                 fontSize: large ? 42 : 30,
                 fontWeight: FontWeight.w800,
               ),
-              decoration: const InputDecoration(labelText: 'Количество банок'),
+              decoration: InputDecoration(
+                labelText: 'Количество',
+                suffixText: unit,
+              ),
               onChanged: (value) => quantity = int.tryParse(value) ?? 0,
             ),
             const SizedBox(height: BanochkiSpacing.md),
@@ -88,12 +92,15 @@ Future<int?> showQuantityDialog(
   );
 }
 
-Future<bool> showUnderflowWarning(BuildContext context) async =>
+Future<bool> showUnderflowWarning(
+  BuildContext context, {
+  required String unit,
+}) async =>
     await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         icon: const Icon(Icons.warning_amber_rounded, size: 48),
-        title: const Text('Банок меньше по расчёту'),
+        title: const Text('Запаса меньше по расчёту'),
         content: const Text(
           'Если действие уже произошло, мы сохраним его и пометим партию «Нужно уточнить». История не исчезнет.',
         ),
@@ -116,6 +123,7 @@ Future<bool> showQuantityConfirmation(
   required String title,
   required int remaining,
   required bool large,
+  required String unit,
 }) async =>
     await showDialog<bool>(
       context: context,
@@ -138,7 +146,7 @@ Future<bool> showQuantityConfirmation(
                 fontWeight: FontWeight.w900,
               ),
             ),
-            Text('банок', style: TextStyle(fontSize: large ? 24 : 18)),
+            Text(unit, style: TextStyle(fontSize: large ? 24 : 18)),
           ],
         ),
         actions: [

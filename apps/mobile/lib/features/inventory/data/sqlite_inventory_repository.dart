@@ -10,19 +10,32 @@ import '../../../core/ids/id_generator.dart';
 import '../../../core/time/clock.dart';
 import '../domain/inventory_repository.dart';
 import '../domain/models.dart';
+import '../../qr/domain/qr_models.dart';
 
 final class SqliteInventoryRepository implements InventoryRepository {
   factory SqliteInventoryRepository({
     required AppDatabase database,
     IdGenerator idGenerator = const UuidGenerator(),
     AppClock clock = const SystemClock(),
-  }) => SqliteInventoryRepository._(database, idGenerator, clock);
+    QrTokenGenerator? qrTokens,
+  }) => SqliteInventoryRepository._(
+    database,
+    idGenerator,
+    clock,
+    qrTokens ?? QrTokenGenerator(),
+  );
 
-  SqliteInventoryRepository._(this._database, this._ids, this._clock);
+  SqliteInventoryRepository._(
+    this._database,
+    this._ids,
+    this._clock,
+    this._qrTokens,
+  );
 
   final AppDatabase _database;
   final IdGenerator _ids;
   final AppClock _clock;
+  final QrTokenGenerator _qrTokens;
 
   @override
   Future<AppSnapshot> loadSnapshot() async {
@@ -57,6 +70,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
       'inventory_events',
       orderBy: 'created_at DESC, event_id DESC',
     )).map(_eventFromRow).toList(growable: false);
+    final photos = (await db.query(
+      'batch_photos',
+      orderBy: 'created_at DESC, photo_id DESC',
+    )).map(_photoFromRow).toList(growable: false);
 
     final settings = settingsRows.isEmpty
         ? const AppSettings()
@@ -65,6 +82,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
     final projectionsByBatch = {
       for (final item in projections) item.batchId: item,
     };
+    final latestPhotoByBatch = <String, BatchPhoto>{};
+    for (final photo in photos) {
+      latestPhotoByBatch.putIfAbsent(photo.batchId, () => photo);
+    }
     final views = <BatchView>[];
     for (final batch in batches) {
       final projection = projectionsByBatch[batch.batchId];
@@ -83,6 +104,7 @@ final class SqliteInventoryRepository implements InventoryRepository {
             lowStockThreshold: settings.lowStockThreshold,
             now: _clock.nowUtc(),
           ),
+          photoPath: latestPhotoByBatch[batch.batchId]?.localPath,
         ),
       );
     }
@@ -347,6 +369,9 @@ final class SqliteInventoryRepository implements InventoryRepository {
     if (input.initialQuantity <= 0) {
       throw const ValidationException('Количество должно быть больше нуля.');
     }
+    if (input.quantityUnit.trim().isEmpty) {
+      throw const ValidationException('Укажите единицу измерения.');
+    }
     if (input.jarVolumeMl != null && input.jarVolumeMl! <= 0) {
       throw const ValidationException('Объём должен быть больше нуля.');
     }
@@ -378,6 +403,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
         'name': name,
         'category': _requiredName(input.category, 'Выберите категорию.'),
         'initial_quantity': input.initialQuantity,
+        'quantity_unit': _requiredName(
+          input.quantityUnit,
+          'Укажите единицу измерения.',
+        ),
         'jar_volume_ml': input.jarVolumeMl,
         'preserved_at': _date(input.preservedAt),
         'harvest_year': input.harvestYear,
@@ -427,10 +456,80 @@ final class SqliteInventoryRepository implements InventoryRepository {
   }
 
   @override
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId) async {
+    final db = await _database.open();
+    final context = await _context(db);
+    final rows = await db.rawQuery(
+      '''
+      SELECT batch_photos.* FROM batch_photos
+      JOIN batches ON batches.batch_id = batch_photos.batch_id
+      WHERE batch_photos.batch_id = ? AND batches.family_id = ?
+      ORDER BY batch_photos.created_at DESC
+      ''',
+      [batchId, context.familyId],
+    );
+    return rows.map(_photoFromRow).toList(growable: false);
+  }
+
+  @override
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  }) async {
+    if (localPath.trim().isEmpty) {
+      throw const ValidationException('Выберите фото для партии.');
+    }
+    final db = await _database.open();
+    late BatchPhoto photo;
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      final batch = await tx.query(
+        'batches',
+        columns: ['batch_id'],
+        where: 'batch_id = ? AND family_id = ?',
+        whereArgs: [batchId, context.familyId],
+        limit: 1,
+      );
+      if (batch.isEmpty) throw const NotFoundException('Партия не найдена.');
+      photo = BatchPhoto(
+        photoId: _ids.next(),
+        batchId: batchId,
+        localPath: localPath,
+        createdAt: _clock.nowUtc(),
+      );
+      await tx.insert('batch_photos', <String, Object?>{
+        'photo_id': photo.photoId,
+        'batch_id': photo.batchId,
+        'local_path': photo.localPath,
+        'created_at': _iso(photo.createdAt),
+      });
+    });
+    return photo;
+  }
+
+  @override
+  Future<void> deleteBatchPhoto(String photoId) async {
+    final db = await _database.open();
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      await tx.rawDelete(
+        '''
+        DELETE FROM batch_photos
+        WHERE photo_id = ? AND batch_id IN (
+          SELECT batch_id FROM batches WHERE family_id = ?
+        )
+        ''',
+        [photoId, context.familyId],
+      );
+    });
+  }
+
+  @override
   Future<void> updateBatchMetadata({
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,
@@ -441,6 +540,10 @@ final class SqliteInventoryRepository implements InventoryRepository {
   }) async {
     final nameValue = _requiredName(name, 'Введите название партии.');
     final categoryValue = _requiredName(category, 'Выберите категорию.');
+    final quantityUnitValue = _requiredName(
+      quantityUnit,
+      'Укажите единицу измерения.',
+    );
     if (jarVolumeMl != null && jarVolumeMl <= 0) {
       throw const ValidationException('Объём должен быть больше нуля.');
     }
@@ -468,6 +571,7 @@ final class SqliteInventoryRepository implements InventoryRepository {
         payload: <String, Object?>{
           'name': nameValue,
           'category': categoryValue,
+          'quantity_unit': quantityUnitValue,
           'jar_volume_ml': jarVolumeMl,
           'harvest_year': harvestYear,
         },
@@ -482,6 +586,7 @@ final class SqliteInventoryRepository implements InventoryRepository {
         <String, Object?>{
           'name': nameValue,
           'category': categoryValue,
+          'quantity_unit': quantityUnitValue,
           'jar_volume_ml': jarVolumeMl,
           'preserved_at': _date(preservedAt),
           'harvest_year': harvestYear,
@@ -844,6 +949,378 @@ final class SqliteInventoryRepository implements InventoryRepository {
   @override
   Future<void> close() => _database.close();
 
+  @override
+  Future<QrCode> generateQrForBatch(String batchId) =>
+      _generateForTarget(QrTargetType.batch, batchId);
+
+  @override
+  Future<QrCode> generateQrForStorageLocation(String locationId) =>
+      _generateForTarget(QrTargetType.storageLocation, locationId);
+
+  @override
+  Future<QrCode> generateUnlinkedQr() async {
+    final db = await _database.open();
+    late QrCode result;
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      result = await _insertNewQr(
+        tx,
+        context,
+        targetType: QrTargetType.unlinked,
+        targetId: null,
+      );
+    });
+    return result;
+  }
+
+  Future<QrCode> _generateForTarget(QrTargetType type, String targetId) async {
+    final db = await _database.open();
+    late QrCode result;
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      await _validateQrTarget(tx, context, type, targetId);
+      final existing = await _activeQrForTarget(tx, context, type, targetId);
+      result =
+          existing ??
+          await _insertNewQr(tx, context, targetType: type, targetId: targetId);
+    });
+    return result;
+  }
+
+  @override
+  Future<QrCode> linkQrToBatch({
+    required String qrId,
+    required String batchId,
+  }) => _linkQr(qrId: qrId, type: QrTargetType.batch, targetId: batchId);
+
+  @override
+  Future<QrCode> linkQrToStorageLocation({
+    required String qrId,
+    required String locationId,
+  }) => _linkQr(
+    qrId: qrId,
+    type: QrTargetType.storageLocation,
+    targetId: locationId,
+  );
+
+  Future<QrCode> _linkQr({
+    required String qrId,
+    required QrTargetType type,
+    required String targetId,
+  }) async {
+    final db = await _database.open();
+    late QrCode result;
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      final qr = await _qrById(tx, context, qrId);
+      if (qr == null || qr.state != QrCodeState.unlinked) {
+        throw const ValidationException(
+          'Можно привязать только свободную этикетку.',
+        );
+      }
+      await _validateQrTarget(tx, context, type, targetId);
+      final now = _clock.nowUtc();
+      await tx.update(
+        'qr_codes',
+        <String, Object?>{
+          'target_type': _targetTypeValue(type),
+          'target_id': targetId,
+          'state': 'active',
+          'linked_at': _iso(now),
+        },
+        where: 'id = ?',
+        whereArgs: [qrId],
+      );
+      await _insertQrEvent(tx, context, qrId, 'QR_LINKED', type, targetId, now);
+      result = QrCode(
+        id: qr.id,
+        familyId: qr.familyId,
+        publicToken: qr.publicToken,
+        shortCode: qr.shortCode,
+        checksum: qr.checksum,
+        protocolVersion: qr.protocolVersion,
+        targetType: type,
+        targetId: targetId,
+        state: QrCodeState.active,
+        createdAt: qr.createdAt,
+        linkedAt: now,
+        createdByMemberId: qr.createdByMemberId,
+        deviceId: qr.deviceId,
+      );
+    });
+    return result;
+  }
+
+  @override
+  Future<void> revokeQr(String qrId) async {
+    final db = await _database.open();
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      final qr = await _qrById(tx, context, qrId);
+      if (qr == null) throw const NotFoundException('QR-код не найден.');
+      if (qr.state == QrCodeState.revoked || qr.state == QrCodeState.replaced) {
+        return;
+      }
+      final now = _clock.nowUtc();
+      await tx.update(
+        'qr_codes',
+        <String, Object?>{'state': 'revoked', 'revoked_at': _iso(now)},
+        where: 'id = ?',
+        whereArgs: [qrId],
+      );
+      await _insertQrEvent(
+        tx,
+        context,
+        qrId,
+        'QR_REVOKED',
+        qr.targetType,
+        qr.targetId,
+        now,
+      );
+    });
+  }
+
+  @override
+  Future<QrCode> replaceQr(String qrId) async {
+    final db = await _database.open();
+    late QrCode replacement;
+    await db.transaction((tx) async {
+      final context = await _context(tx);
+      final previous = await _qrById(tx, context, qrId);
+      if (previous == null ||
+          previous.targetId == null ||
+          previous.state != QrCodeState.active) {
+        throw const ValidationException(
+          'Перевыпустить можно только активный QR-код.',
+        );
+      }
+      replacement = await _insertNewQr(
+        tx,
+        context,
+        targetType: previous.targetType,
+        targetId: previous.targetId,
+      );
+      final now = _clock.nowUtc();
+      await tx.update(
+        'qr_codes',
+        <String, Object?>{
+          'state': 'replaced',
+          'revoked_at': _iso(now),
+          'replaced_by_qr_id': replacement.id,
+        },
+        where: 'id = ?',
+        whereArgs: [qrId],
+      );
+      await _insertQrEvent(
+        tx,
+        context,
+        qrId,
+        'QR_REPLACED',
+        previous.targetType,
+        previous.targetId,
+        now,
+      );
+    });
+    return replacement;
+  }
+
+  @override
+  Future<QrResolveResult> resolveQr(String payload) async {
+    final parsed = QrProtocol.parse(payload);
+    if (parsed == null) {
+      return const QrResolveResult(kind: QrResolutionKind.invalid);
+    }
+    if (parsed.version != QrProtocol.currentVersion) {
+      return const QrResolveResult(kind: QrResolutionKind.unsupported);
+    }
+    final db = await _database.open();
+    final context = await _context(db);
+    final rows = await db.query(
+      'qr_codes',
+      where: 'family_id = ? AND public_token = ?',
+      whereArgs: [context.familyId, parsed.token],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return const QrResolveResult(kind: QrResolutionKind.unknown);
+    }
+    final qr = _qrFromRow(rows.single);
+    return QrResolveResult(kind: _resolutionKind(qr), qrCode: qr);
+  }
+
+  @override
+  Future<QrResolveResult> resolveShortCode(String shortCode) async {
+    if (!ShortCode.isValid(shortCode)) {
+      return const QrResolveResult(kind: QrResolutionKind.invalid);
+    }
+    final db = await _database.open();
+    final context = await _context(db);
+    final normalized = ShortCode.format(shortCode);
+    final rows = await db.query(
+      'qr_codes',
+      where: 'family_id = ? AND short_code = ?',
+      whereArgs: [context.familyId, normalized],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      return const QrResolveResult(kind: QrResolutionKind.unknown);
+    }
+    final qr = _qrFromRow(rows.single);
+    return QrResolveResult(kind: _resolutionKind(qr), qrCode: qr);
+  }
+
+  @override
+  Future<QrCode?> activeQrForTarget(QrTargetType type, String targetId) async {
+    final db = await _database.open();
+    return _activeQrForTarget(db, await _context(db), type, targetId);
+  }
+
+  Future<QrCode?> _activeQrForTarget(
+    DatabaseExecutor db,
+    _LocalContext context,
+    QrTargetType type,
+    String targetId,
+  ) async {
+    final rows = await db.query(
+      'qr_codes',
+      where:
+          'family_id = ? AND target_type = ? AND target_id = ? AND state = ?',
+      whereArgs: [context.familyId, _targetTypeValue(type), targetId, 'active'],
+      limit: 1,
+    );
+    return rows.firstOrNull == null ? null : _qrFromRow(rows.first);
+  }
+
+  Future<QrCode> _insertNewQr(
+    DatabaseExecutor tx,
+    _LocalContext context, {
+    required QrTargetType targetType,
+    required String? targetId,
+  }) async {
+    final now = _clock.nowUtc();
+    for (var attempt = 0; attempt < 20; attempt++) {
+      final base = List.generate(
+        6,
+        (_) => _qrTokens.nextToken().codeUnitAt(0) % 10,
+      ).join();
+      final shortCode = ShortCode.create(base);
+      final existing = await tx.query(
+        'qr_codes',
+        where: 'family_id = ? AND short_code = ?',
+        whereArgs: [context.familyId, shortCode],
+        limit: 1,
+      );
+      if (existing.isNotEmpty) continue;
+      final token = _qrTokens.nextToken();
+      final duplicateToken = await tx.query(
+        'qr_codes',
+        where: 'public_token = ?',
+        whereArgs: [token],
+        limit: 1,
+      );
+      if (duplicateToken.isNotEmpty) continue;
+      final id = _ids.next();
+      final state = targetType == QrTargetType.unlinked
+          ? QrCodeState.unlinked
+          : QrCodeState.active;
+      await tx.insert('qr_codes', <String, Object?>{
+        'id': id,
+        'family_id': context.familyId,
+        'public_token': token,
+        'short_code': shortCode,
+        'checksum': shortCode.substring(7),
+        'protocol_version': QrProtocol.currentVersion,
+        'target_type': _targetTypeValue(targetType),
+        'target_id': targetId,
+        'state': state.name,
+        'created_at': _iso(now),
+        'linked_at': targetType == QrTargetType.unlinked ? null : _iso(now),
+        'created_by_member_id': context.memberId,
+        'device_id': context.deviceId,
+      });
+      await _insertQrEvent(
+        tx,
+        context,
+        id,
+        'QR_CREATED',
+        targetType,
+        targetId,
+        now,
+      );
+      return QrCode(
+        id: id,
+        familyId: context.familyId,
+        publicToken: token,
+        shortCode: shortCode,
+        checksum: shortCode.substring(7),
+        protocolVersion: 1,
+        targetType: targetType,
+        targetId: targetId,
+        state: state,
+        createdAt: now,
+        linkedAt: targetType == QrTargetType.unlinked ? null : now,
+        createdByMemberId: context.memberId,
+        deviceId: context.deviceId,
+      );
+    }
+    throw const ValidationException(
+      'Не удалось подобрать уникальный короткий номер.',
+    );
+  }
+
+  Future<void> _validateQrTarget(
+    DatabaseExecutor tx,
+    _LocalContext context,
+    QrTargetType type,
+    String targetId,
+  ) async {
+    final table = type == QrTargetType.batch ? 'batches' : 'storage_locations';
+    final idColumn = type == QrTargetType.batch ? 'batch_id' : 'location_id';
+    final rows = await tx.query(
+      table,
+      where: '$idColumn = ? AND family_id = ? AND archived_at IS NULL',
+      whereArgs: [targetId, context.familyId],
+      limit: 1,
+    );
+    if (rows.isEmpty) {
+      throw const NotFoundException('Активная QR-цель не найдена.');
+    }
+  }
+
+  Future<QrCode?> _qrById(
+    DatabaseExecutor db,
+    _LocalContext context,
+    String id,
+  ) async {
+    final rows = await db.query(
+      'qr_codes',
+      where: 'id = ? AND family_id = ?',
+      whereArgs: [id, context.familyId],
+      limit: 1,
+    );
+    return rows.firstOrNull == null ? null : _qrFromRow(rows.first);
+  }
+
+  Future<void> _insertQrEvent(
+    DatabaseExecutor db,
+    _LocalContext context,
+    String qrId,
+    String type,
+    QrTargetType targetType,
+    String? targetId,
+    DateTime now,
+  ) => db.insert('qr_events', <String, Object?>{
+    'event_id': _ids.next(),
+    'family_id': context.familyId,
+    'qr_id': qrId,
+    'event_type': type,
+    'target_type': _targetTypeValue(targetType),
+    'target_id': targetId,
+    'created_by_member_id': context.memberId,
+    'device_id': context.deviceId,
+    'created_at': _iso(now),
+  });
+
   Future<_LocalContext> _context(DatabaseExecutor db) async {
     final family = (await db.query('families', limit: 1)).firstOrNull;
     final member = (await db.query('family_members', limit: 1)).firstOrNull;
@@ -996,6 +1473,7 @@ Batch _batchFromRow(Map<String, Object?> row) => Batch(
   name: row['name']! as String,
   category: row['category']! as String,
   initialQuantity: row['initial_quantity']! as int,
+  quantityUnit: row['quantity_unit'] as String? ?? 'шт.',
   jarVolumeMl: row['jar_volume_ml'] as int?,
   preservedAt: _optionalTime(row['preserved_at']),
   harvestYear: row['harvest_year'] as int?,
@@ -1008,6 +1486,13 @@ Batch _batchFromRow(Map<String, Object?> row) => Batch(
   createdAt: _time(row['created_at']),
   updatedAt: _time(row['updated_at']),
   archivedAt: _optionalTime(row['archived_at']),
+);
+
+BatchPhoto _photoFromRow(Map<String, Object?> row) => BatchPhoto(
+  photoId: row['photo_id']! as String,
+  batchId: row['batch_id']! as String,
+  localPath: row['local_path']! as String,
+  createdAt: _time(row['created_at']),
 );
 
 InventoryEvent _eventFromRow(Map<String, Object?> row) => InventoryEvent(
@@ -1050,6 +1535,44 @@ AppSettings _settingsFromRow(Map<String, Object?> row) => AppSettings(
   lowStockThreshold: row['low_stock_threshold']! as int,
   seedApplied: row['seed_applied'] == 1,
 );
+
+QrCode _qrFromRow(Map<String, Object?> row) => QrCode(
+  id: row['id']! as String,
+  familyId: row['family_id']! as String,
+  publicToken: row['public_token']! as String,
+  shortCode: row['short_code']! as String,
+  checksum: row['checksum']! as String,
+  protocolVersion: row['protocol_version']! as int,
+  targetType: _targetTypeFromValue(row['target_type']! as String),
+  targetId: row['target_id'] as String?,
+  state: QrCodeState.values.firstWhere((value) => value.name == row['state']),
+  createdAt: _time(row['created_at']),
+  linkedAt: _optionalTime(row['linked_at']),
+  revokedAt: _optionalTime(row['revoked_at']),
+  replacedByQrId: row['replaced_by_qr_id'] as String?,
+  createdByMemberId: row['created_by_member_id']! as String,
+  deviceId: row['device_id']! as String,
+);
+
+String _targetTypeValue(QrTargetType type) => switch (type) {
+  QrTargetType.batch => 'batch',
+  QrTargetType.storageLocation => 'storage_location',
+  QrTargetType.unlinked => 'unlinked',
+};
+
+QrTargetType _targetTypeFromValue(String value) => switch (value) {
+  'batch' => QrTargetType.batch,
+  'storage_location' => QrTargetType.storageLocation,
+  'unlinked' => QrTargetType.unlinked,
+  _ => throw FormatException('Неизвестная QR-цель: $value'),
+};
+
+QrResolutionKind _resolutionKind(QrCode qr) => switch (qr.state) {
+  QrCodeState.active => QrResolutionKind.resolved,
+  QrCodeState.unlinked => QrResolutionKind.unlinked,
+  QrCodeState.revoked => QrResolutionKind.revoked,
+  QrCodeState.replaced => QrResolutionKind.replaced,
+};
 
 Future<List<StorageLocation>> _loadLocations(DatabaseExecutor db) async =>
     (await db.query(

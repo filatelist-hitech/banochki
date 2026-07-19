@@ -1,11 +1,13 @@
-# Модель данных R1
+# Модель данных R1/R2
 
-SQLite schema version: **2**.
+SQLite schema version: **4**.
 
 ## Миграции
 
 1. `v1 core schema` — profiles, families, members, device identity, locations, batches, batch photos, inventory events, projections, settings и append-only triggers.
 2. `v2 indexes and metadata` — scoped idempotency unique index, event ordering, catalog/location/tree indexes и `schema_metadata`.
+3. `v3 QR labels` — `qr_codes`, append-only `qr_events`, opaque token/short-code unique indexes и target lookup.
+4. `v4 quantity units` — `batches.quantity_unit`; существующие партии получают `шт.`, `мл` или `г` по встроенной категории.
 
 Миграции выполняются последовательно внутри lifecycle `openDatabase`; `PRAGMA foreign_keys = ON` включается до create/upgrade.
 
@@ -18,12 +20,26 @@ SQLite schema version: **2**.
 | `family_members` | первый и debug-участники |
 | `device_identities` | стабильный UUID устройства и последовательность idempotency keys |
 | `storage_locations` | adjacency-list дерево мест |
-| `batches` | метаданные партии и initial quantity, но не remaining |
+| `batches` | метаданные партии, initial quantity и `quantity_unit`, но не remaining |
 | `inventory_events` | неизменяемый журнал |
 | `inventory_projections` | пересобираемый read model остатка/места/reconciliation |
-| `batch_photos` | контракт локального фото; UI R1 показывает заглушку |
+| `batch_photos` | локальные пути снимков партии; последний снимок используется для превью каталога |
+
+## Единицы и фото
+
+`quantity_unit` хранится на самой партии: это исключает неявное изменение старого остатка при смене категории. Встроенные категории задают единицу автоматически: овощи/фрукты — `шт.`, варенье/соусы/напитки — `мл`, грибы/заморозка/сушка — `г`. Для «Другое» пользователь сохраняет собственные название категории и единицу.
+
+Файлы фото копируются в app-private documents storage; SQLite хранит только локальный путь. Фото не меняет quantity/event projection. Список идёт от новых к старым, поэтому `BatchView.photoPath` всегда содержит последний добавленный снимок.
 | `app_settings` | theme, large mode, low-stock threshold, seed flag |
 | `schema_metadata` | явная версия схемы |
+| `qr_codes` | stable public token, short code, target, lifecycle и sync-ready actor/device fields |
+| `qr_events` | append-only техническая история QR без token |
+
+## QR R2
+
+QR payload: `banochki://qr/v1/<base64url-random-token>`. В нём нет PII или данных партии. `short_code` имеет вид `XXXXXX-C`, где `C` — Luhn checksum; `(family_id, short_code)` и `public_token` уникальны. Linked targets проверяются в одной SQLite transaction; QR не меняет остаток и не добавляет inventory event.
+
+`target_type` допускает `batch`, `storage_location`, `unlinked`; `state` — `unlinked`, `active`, `revoked`, `replaced`. Свободная этикетка становится active только после явной пользовательской привязки. Отзыв и перевыпуск сохраняют историю через `qr_events`; token/short code не переиспользуются.
 
 ## События R1
 

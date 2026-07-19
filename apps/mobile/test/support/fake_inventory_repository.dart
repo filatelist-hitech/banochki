@@ -1,5 +1,6 @@
 import 'package:banochki/features/inventory/domain/inventory_repository.dart';
 import 'package:banochki/features/inventory/domain/models.dart';
+import 'package:banochki/features/qr/domain/qr_models.dart';
 
 final class FakeInventoryRepository implements InventoryRepository {
   FakeInventoryRepository(this.snapshot);
@@ -28,6 +29,7 @@ final class FakeInventoryRepository implements InventoryRepository {
       name: input.name.trim(),
       category: input.category,
       initialQuantity: input.initialQuantity,
+      quantityUnit: input.quantityUnit,
       jarVolumeMl: input.jarVolumeMl,
       preservedAt: input.preservedAt,
       harvestYear: input.harvestYear,
@@ -84,6 +86,23 @@ final class FakeInventoryRepository implements InventoryRepository {
   }
 
   @override
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId) async => const [];
+
+  @override
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  }) async => BatchPhoto(
+    photoId: _id,
+    batchId: batchId,
+    localPath: localPath,
+    createdAt: DateTime.now().toUtc(),
+  );
+
+  @override
+  Future<void> deleteBatchPhoto(String photoId) async {}
+
+  @override
   Future<void> updateSettings(AppSettings settings) async {
     snapshot = AppSnapshot(
       profile: snapshot.profile,
@@ -102,6 +121,66 @@ final class FakeInventoryRepository implements InventoryRepository {
 
   @override
   Future<void> close() async {}
+
+  @override
+  Future<QrCode?> activeQrForTarget(QrTargetType type, String targetId) async =>
+      null;
+
+  @override
+  Future<QrCode> generateQrForBatch(String batchId) async =>
+      _fakeQr(QrTargetType.batch, batchId);
+
+  @override
+  Future<QrCode> generateQrForStorageLocation(String locationId) async =>
+      _fakeQr(QrTargetType.storageLocation, locationId);
+
+  @override
+  Future<QrCode> generateUnlinkedQr() async =>
+      _fakeQr(QrTargetType.unlinked, null);
+
+  QrCode _fakeQr(QrTargetType type, String? targetId) => QrCode(
+    id: _id,
+    familyId: 'family',
+    publicToken: 'a' * 43,
+    shortCode: '123456-6',
+    checksum: '6',
+    protocolVersion: 1,
+    targetType: type,
+    targetId: targetId,
+    state: type == QrTargetType.unlinked
+        ? QrCodeState.unlinked
+        : QrCodeState.active,
+    createdAt: DateTime.utc(2026, 7, 19),
+    createdByMemberId: 'member',
+    deviceId: 'device',
+  );
+
+  @override
+  Future<QrCode> linkQrToBatch({
+    required String qrId,
+    required String batchId,
+  }) async => _fakeQr(QrTargetType.batch, batchId);
+
+  @override
+  Future<QrCode> linkQrToStorageLocation({
+    required String qrId,
+    required String locationId,
+  }) async => _fakeQr(QrTargetType.storageLocation, locationId);
+
+  @override
+  Future<QrCode> replaceQr(String qrId) async =>
+      _fakeQr(QrTargetType.batch, 'batch');
+
+  @override
+  Future<void> revokeQr(String qrId) async {}
+
+  @override
+  Future<QrResolveResult> resolveQr(String payload) async =>
+      const QrResolveResult(kind: QrResolutionKind.unknown);
+
+  @override
+  Future<QrResolveResult> resolveShortCode(String shortCode) async =>
+      const QrResolveResult(kind: QrResolutionKind.unknown);
 
   @override
   Future<StorageLocation> createLocation({
@@ -147,6 +226,7 @@ final class FakeInventoryRepository implements InventoryRepository {
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,

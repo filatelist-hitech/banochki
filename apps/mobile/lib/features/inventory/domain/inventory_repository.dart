@@ -1,4 +1,5 @@
 import 'models.dart';
+import '../../qr/domain/qr_models.dart';
 
 abstract interface class InventoryRepository {
   Future<AppSnapshot> loadSnapshot();
@@ -29,10 +30,18 @@ abstract interface class InventoryRepository {
 
   Future<BatchView> createBatch(CreateBatchInput input);
 
+  Future<List<BatchPhoto>> listBatchPhotos(String batchId);
+  Future<BatchPhoto> addBatchPhoto({
+    required String batchId,
+    required String localPath,
+  });
+  Future<void> deleteBatchPhoto(String photoId);
+
   Future<void> updateBatchMetadata({
     required String batchId,
     required String name,
     required String category,
+    required String quantityUnit,
     int? jarVolumeMl,
     DateTime? preservedAt,
     int? harvestYear,
@@ -60,6 +69,20 @@ abstract interface class InventoryRepository {
   });
 
   Future<void> rebuildProjections();
+
+  Future<QrCode> generateQrForBatch(String batchId);
+  Future<QrCode> generateQrForStorageLocation(String locationId);
+  Future<QrCode> generateUnlinkedQr();
+  Future<QrCode> linkQrToBatch({required String qrId, required String batchId});
+  Future<QrCode> linkQrToStorageLocation({
+    required String qrId,
+    required String locationId,
+  });
+  Future<void> revokeQr(String qrId);
+  Future<QrCode> replaceQr(String qrId);
+  Future<QrResolveResult> resolveQr(String payload);
+  Future<QrResolveResult> resolveShortCode(String shortCode);
+  Future<QrCode?> activeQrForTarget(QrTargetType type, String targetId);
 
   Future<void> updateSettings(AppSettings settings);
 

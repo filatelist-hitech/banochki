@@ -1,4 +1,4 @@
-# Offline-first в R1
+# Offline-first в R1/R2
 
 ## Локальный write path
 
@@ -10,9 +10,17 @@
 
 Создание партии атомарно записывает batch, `BATCH_CREATED` и projection. Повтор одного idempotency key возвращает существующий эффект.
 
+## QR и печать без сети
+
+QR generation, parsing, short-code lookup, link/revoke/replace и A4 PDF generation выполняются на устройстве. QR содержит только opaque token и не требует URL, backend или интернет. Неизвестный, но валидный QR показывает «Этого кода пока нет на устройстве» — R2 не имитирует облачную синхронизацию.
+
+PDF использует встроенные локальные Roboto font assets, поэтому кириллица не зависит от сети или системного набора шрифтов. Camera frames и распознанные чужие QR не записываются в SQLite или telemetry.
+
 ## Перезапуск
 
 Production database хранится как `banochki.sqlite` в app-private databases directory. Bootstrap открывает её через versioned migrations до отображения основного интерфейса. Integration test закрывает repository, создаёт новый database/repository instance и подтверждает сохранение партии, остатка 16 и четырёх событий.
+
+Выбранное фото копируется в app-private documents storage до записи `batch_photos`; поэтому путь не зависит от временного URI системного picker. Снимки и их превью доступны без сети и не меняют остаток партии.
 
 ## Расхождение остатка
 
@@ -20,7 +28,7 @@ Production database хранится как `banochki.sqlite` в app-private dat
 
 ## Сеть
 
-В runtime dependencies отсутствуют HTTP/Supabase/Firebase SDK. R1 не открывает сокеты и не содержит фоновой синхронизации. Будущий R3 должен использовать отдельный adapter/queue за repository contract.
+В runtime dependencies отсутствуют HTTP/Supabase/Firebase SDK. R1/R2 не открывают сокеты и не содержат фоновой синхронизации. Будущий R3 должен использовать отдельный adapter/queue за repository contract.
 
 ## Защита локальных данных
 
