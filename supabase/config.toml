@@ -1,0 +1,24 @@
+project_id = "banochki-local"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+
+[auth]
+enabled = true
+site_url = "banochki://login-callback/"
+additional_redirect_urls = ["banochki://login-callback/"]
+enable_signup = true
+enable_anonymous_sign_ins = true
+
+[storage]
+enabled = true
+file_size_limit = "10MiB"
+
+[storage.buckets.batch-photos]
+public = false
+file_size_limit = "10MiB"
+allowed_mime_types = ["image/jpeg", "image/png", "image/webp"]

@@ -8,10 +8,10 @@
 
 ## Current execution state
 
-- Текущий этап: **R2: QR workflow**.
+- Текущий этап: **R3: Family sync (in progress)**.
 - Статус этапа: **DONE по implementation и automated gates; user-verified iPhone QR scan/manual lookup PASS. Remaining beta evidence: physical Android, flashlight, paper/PDF and screen-reader matrix.**
 - Evidence date: 2026-07-19.
-- Следующий допустимый этап: закрыть remaining R2 beta evidence matrix; после неё начать R3 family sync без изменения QR contract.
+- R3 checkpoint 2026-07-19: R1/R2 source review PASS; R2 physical beta matrix остаётся NOT_RUN и не отменяет корректный QR contract. Local sync schema + server migrations/RLS/RPC + protocol tests added. Следующий шаг R3: bind transport/UI and run local Supabase two-device + RLS evidence matrix.
 
 Текущий пользовательский stage contract имеет приоритет над прежней группировкой full MVP: QR относится к R2, Supabase/family sync — к R3, voice — к R4, recipes/season planning — к R5. Эти функции не реализованы и не показаны как заглушки в R1.
 

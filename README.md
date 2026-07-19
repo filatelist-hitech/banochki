@@ -6,11 +6,11 @@
 
 Что заготовили, где лежит и сколько осталось — без таблиц, бумажек и загадочного «кажется, на даче ещё была смородина».
 
-`Flutter` · `iOS 13+` · `Android 7+` · `local-first` · `без аккаунта и интернета`
+`Flutter` · `iOS 13+` · `Android 7+` · `local-first` · `offline-ready`
 
 </div>
 
-> **Статус проекта:** реализованы **R1 — Local foundation** и **R2 — QR workflow**, а также локальные фото партий и единицы измерения. Приложение локально ведёт партии, места, остатки, историю и QR-этикетки. Семейная синхронизация, голос и рецепты остаются следующими этапами.
+> **Статус проекта:** R1 и R2 реализованы. R3 начат: в репозитории есть локальный sync outbox, Supabase migration, RLS и RPC-контракт; экран входа, invite UI и сетевой transport Flutter ещё не подключены. Обычная работа с партиями по-прежнему полностью локальна.
 
 ## Зачем нужны «Баночки»
 
@@ -106,6 +106,21 @@ flutter build apk --debug
 flutter build ios --simulator --debug
 ```
 
+### Локальный Supabase для разработки R3
+
+Этот контур нужен разработчику для проверки migrations/RLS; текущая Flutter-сборка **не подключается к нему автоматически**. Понадобятся Docker Desktop и Supabase CLI.
+
+```bash
+# из корня репозитория
+cp .env.example .env
+supabase start
+supabase db reset
+supabase test db
+supabase status
+```
+
+`supabase db reset` сбрасывает только локальную dev-базу и применяет migrations заново. Не используйте `--linked`: он работает с привязанным удалённым проектом и разрушителен. После изменений схемы проверьте drift: `supabase db diff --schema public`.
+
 Последняя фактическая проверка R1/R2 от 2026-07-19:
 
 - `flutter analyze` — PASS;
@@ -153,6 +168,7 @@ Flutter UI → Riverpod controller → Repository → SQLite
 - [Offline-first гарантии](docs/OFFLINE_FIRST.md)
 - [Доступность и крупный режим](docs/ACCESSIBILITY.md)
 - [Тестирование](docs/TESTING.md)
+- [R3: sync, роли, invites и Supabase](docs/R3_FAMILY_SYNC.md)
 - [Продуктовая спецификация](PRODUCT_SPEC.md)
 - [План MVP](.omx/plans/banochki-mvp.md)
 
@@ -160,15 +176,15 @@ Flutter UI → Riverpod controller → Repository → SQLite
 
 - [x] **R1 — Local foundation:** партии, события, остаток, места, история, крупный режим.
 - [x] **R2 — QR workflow:** генерация, сканирование, короткие номера, свободные метки и A4 PDF-листы.
-- [ ] **R3 — Family sync:** Supabase, RLS, приглашения, push/pull sync и конфликты.
+- [ ] **R3 — Family sync:** protocol/schema/RLS готовы; Flutter transport, invites и двухустройственные проверки в работе.
 - [ ] **R4 — Voice accessibility:** добавление партии и команды голосом.
 - [ ] **R5 — Recipes and season planning:** версии рецептов, статистика и рекомендации.
 
-## Важные ограничения R1/R2
+## Важные ограничения текущей сборки
 
 - Удаление приложения удаляет локальную базу; облачного восстановления пока нет.
 - SQLite-файл находится в app-private storage и защищён средствами ОС, но отдельный SQLCipher-слой ещё не добавлен.
-- Несколько устройств не синхронизируются — это задача R3.
+- Несколько устройств пока не синхронизируются через UI: R3 transport ещё не подключён к Flutter.
 - QR работает полностью локально; без R3 код с другого устройства может быть валиден, но отсутствовать в локальной SQLite базе.
 - Голос и рецепты сознательно не спрятаны в интерфейсе «на будущее»: сейчас они не реализованы.
 

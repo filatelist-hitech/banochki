@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../app/app_controller.dart';
 import '../../../core/ui/banochki_theme.dart';
 import '../../../features/inventory/domain/models.dart';
+import '../../../app/app_controller.dart';
 
 final class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -122,6 +122,46 @@ final class SettingsScreen extends ConsumerWidget {
                         );
                       }
                     },
+            ),
+          if (kDebugMode)
+            ListTile(
+              leading: const Icon(Icons.sync),
+              title: const Text('Диагностика синхронизации'),
+              subtitle: const Text('R3: cursor, outbox, устройство и ошибки.'),
+              onTap: () async {
+                final diagnostics = await controller.syncDiagnostics();
+                if (!context.mounted) return;
+                await showDialog<void>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('R3 sync diagnostics'),
+                    content: Text(
+                      diagnostics == null
+                          ? 'Supabase не настроен. Передайте --dart-define=SUPABASE_URL и SUPABASE_ANON_KEY.'
+                          : 'Статус: ${diagnostics.status}\n'
+                                'Cursor: ${diagnostics.cursor}\n'
+                                'Outbox: ${diagnostics.outboxCount}\n'
+                                'Device: ${diagnostics.deviceId ?? '—'}\n'
+                                'Последний push: ${diagnostics.lastPushAt ?? '—'}\n'
+                                'Последний pull: ${diagnostics.lastPullAt ?? '—'}\n'
+                                'Ошибка: ${diagnostics.lastError ?? '—'}',
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await controller.reconnectSync();
+                        },
+                        child: const Text('Переподключить'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Закрыть'),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           const SizedBox(height: BanochkiSpacing.xl),
           const Card(
